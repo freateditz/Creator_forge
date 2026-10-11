@@ -11,6 +11,7 @@ class AppSettings extends Equatable {
   final bool showNotifications;
   final bool startMinimized;
   final String fileNamingTemplate;
+  final int httpSegments;
 
   const AppSettings({
     required this.defaultDownloadsDir,
@@ -23,6 +24,7 @@ class AppSettings extends Equatable {
     this.showNotifications = true,
     this.startMinimized = false,
     this.fileNamingTemplate = '%(title)s.%(ext)s',
+    this.httpSegments = 8,
   });
 
   AppSettings copyWith({
@@ -36,6 +38,7 @@ class AppSettings extends Equatable {
     bool? showNotifications,
     bool? startMinimized,
     String? fileNamingTemplate,
+    int? httpSegments,
   }) {
     return AppSettings(
       defaultDownloadsDir: defaultDownloadsDir ?? this.defaultDownloadsDir,
@@ -49,6 +52,7 @@ class AppSettings extends Equatable {
       showNotifications: showNotifications ?? this.showNotifications,
       startMinimized: startMinimized ?? this.startMinimized,
       fileNamingTemplate: fileNamingTemplate ?? this.fileNamingTemplate,
+      httpSegments: httpSegments ?? this.httpSegments,
     );
   }
 
@@ -63,6 +67,7 @@ class AppSettings extends Equatable {
     'showNotifications': showNotifications,
     'startMinimized': startMinimized,
     'fileNamingTemplate': fileNamingTemplate,
+    'httpSegments': httpSegments,
   };
 
   factory AppSettings.fromJson(
@@ -83,6 +88,7 @@ class AppSettings extends Equatable {
       startMinimized: json['startMinimized'] as bool? ?? false,
       fileNamingTemplate:
           json['fileNamingTemplate'] as String? ?? '%(title)s.%(ext)s',
+      httpSegments: json['httpSegments'] as int? ?? 8,
     );
   }
 
@@ -98,5 +104,6 @@ class AppSettings extends Equatable {
     showNotifications,
     startMinimized,
     fileNamingTemplate,
+    httpSegments,
   ];
 }

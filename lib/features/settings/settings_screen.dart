@@ -78,6 +78,16 @@ class SettingsScreen extends ConsumerWidget {
                             .read(appSettingsProvider.notifier)
                             .save((s) => s.copyWith(keepDownloadHistory: v)),
                       ),
+                      _StepperTile(
+                        label: 'HTTP Download Segments',
+                        value: settings.httpSegments,
+                        min: 1,
+                        max: 16,
+                        icon: Icons.call_split_outlined,
+                        onChanged: (v) => ref
+                            .read(appSettingsProvider.notifier)
+                            .save((s) => s.copyWith(httpSegments: v)),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),

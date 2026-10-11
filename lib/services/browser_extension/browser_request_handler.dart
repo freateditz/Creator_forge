@@ -7,9 +7,11 @@ import '../../models/browser_download_request.dart';
 import '../../models/media_info.dart';
 import '../download/download_engine.dart';
 import '../download/metadata_resolver.dart';
+import '../download/segmented_http_engine.dart';
 
 class BrowserRequestHandler {
   final DownloadEngine _downloadEngine;
+  final SegmentedHttpEngine? _segmentedEngine;
   final MetadataResolver _metadataResolver;
   final void Function(String taskId)? _onTaskEnqueued;
 
@@ -17,9 +19,11 @@ class BrowserRequestHandler {
 
   BrowserRequestHandler({
     required DownloadEngine downloadEngine,
+    SegmentedHttpEngine? segmentedEngine,
     required MetadataResolver metadataResolver,
     void Function(String taskId)? onTaskEnqueued,
   }) : _downloadEngine = downloadEngine,
+       _segmentedEngine = segmentedEngine,
        _metadataResolver = metadataResolver,
        _onTaskEnqueued = onTaskEnqueued;
 
@@ -145,7 +149,19 @@ class BrowserRequestHandler {
         : null;
 
     try {
-      final task = await _downloadEngine.enqueue(
+      // Route direct file URLs (non-media-site) to the segmented HTTP engine
+      // so they download in parallel segments for speed.
+      final isDirectUrl = _isDirectDownloadUrl(validated);
+      final segmented = _segmentedEngine;
+      final engine = (isDirectUrl && segmented != null)
+          ? segmented
+          : _downloadEngine;
+
+      if (isDirectUrl && segmented != null) {
+        _log.info('Routing to segmented engine for direct URL: ${msg.url}');
+      }
+
+      final task = await engine.enqueue(
         url: validated.toString(),
         formatSelector: msg.formatSelector,
         downloadType: msg.downloadType,
@@ -161,6 +177,77 @@ class BrowserRequestHandler {
         error: 'Could not start download: $e',
       );
     }
+  }
+
+  /// Returns true when the URL looks like a direct file download rather than
+  /// a media-site page that yt-dlp should handle.
+  ///
+  /// Heuristic: URL path ends with a known file extension AND the host is not
+  /// on the list of media-platform hostnames that yt-dlp handles.
+  static bool _isDirectDownloadUrl(Uri uri) {
+    const mediaSitePatterns = {
+      'youtube.com',
+      'youtu.be',
+      'instagram.com',
+      'pinterest.com',
+      'pin.it',
+      'twitter.com',
+      'x.com',
+      'tiktok.com',
+      'vimeo.com',
+      'twitch.tv',
+      'reddit.com',
+      'dailymotion.com',
+      'soundcloud.com',
+      'bandcamp.com',
+      'bilibili.com',
+    };
+
+    final host = uri.host.toLowerCase();
+    final isMediaSite = mediaSitePatterns.any(
+      (site) => host == site || host.endsWith('.$site'),
+    );
+    if (isMediaSite) return false;
+
+    // Check for direct file extension.
+    const directExts = {
+      'mp4',
+      'mkv',
+      'webm',
+      'avi',
+      'mov',
+      'flv',
+      'mp3',
+      'aac',
+      'm4a',
+      'flac',
+      'wav',
+      'ogg',
+      'opus',
+      'zip',
+      'tar',
+      'gz',
+      'rar',
+      '7z',
+      'pdf',
+      'apk',
+      'dmg',
+      'exe',
+      'iso',
+      'jpg',
+      'jpeg',
+      'png',
+      'gif',
+      'webp',
+    };
+
+    final path = uri.path.toLowerCase();
+    final dot = path.lastIndexOf('.');
+    if (dot >= 0) {
+      final ext = path.substring(dot + 1);
+      if (directExts.contains(ext)) return true;
+    }
+    return false;
   }
 
   static bool _isLocalHost(String host) {

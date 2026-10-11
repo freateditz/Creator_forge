@@ -16,6 +16,7 @@ import '../services/bg_removal/image_runtime_manager.dart';
 import '../services/browser_extension/browser_request_handler.dart';
 import '../services/browser_extension/ipc_server.dart';
 import '../services/download/metadata_resolver.dart';
+import '../services/download/segmented_http_engine.dart';
 import '../services/download/ytdlp_download_engine.dart';
 import '../services/download/ytdlp_locator.dart';
 import '../services/ffmpeg/ffmpeg_service.dart';
@@ -108,6 +109,31 @@ final downloadEngineProvider = Provider<YtDlpDownloadEngine>((ref) {
 
 final downloadTasksProvider = StreamProvider<List<DownloadTask>>((ref) {
   return ref.watch(downloadEngineProvider).tasksStream;
+});
+
+// ── Segmented HTTP engine ─────────────────────────────────────────────────────
+
+final segmentedEngineProvider = Provider<SegmentedHttpEngine>((ref) {
+  final engine = SegmentedHttpEngine(
+    historyRepo: ref.watch(downloadHistoryRepositoryProvider),
+  );
+
+  engine.initialize().ignore();
+
+  ref.listen(appSettingsProvider, (_, next) {
+    next.whenData((settings) {
+      engine.maxConcurrent = settings.maxConcurrentDownloads;
+      engine.segmentCount = settings.httpSegments;
+      engine.defaultOutputDir = settings.defaultDownloadsDir;
+    });
+  });
+
+  ref.onDispose(() => engine.dispose().ignore());
+  return engine;
+});
+
+final segmentedTasksProvider = StreamProvider<List<DownloadTask>>((ref) {
+  return ref.watch(segmentedEngineProvider).tasksStream;
 });
 
 // ── Audio processing ─────────────────────────────────────────────────────────
@@ -218,6 +244,7 @@ class _BrowserTaskIdsNotifier extends StateNotifier<Set<String>> {
 final browserRequestHandlerProvider = Provider<BrowserRequestHandler>((ref) {
   return BrowserRequestHandler(
     downloadEngine: ref.watch(downloadEngineProvider),
+    segmentedEngine: ref.watch(segmentedEngineProvider),
     metadataResolver: ref.watch(metadataResolverProvider),
     onTaskEnqueued: (id) => ref.read(browserTaskIdsProvider.notifier).add(id),
   );
