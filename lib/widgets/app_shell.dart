@@ -5,16 +5,32 @@ import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_colors.dart';
 import '../providers/app_providers.dart';
+import '../providers/browser_integration_provider.dart';
 import '../routing/route_paths.dart';
 import 'app_sidebar.dart';
 
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   final Widget child;
 
   const AppShell({super.key, required this.child});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  @override
+  void initState() {
+    super.initState();
+    // Kick off lightweight browser health check after the first frame so it
+    // never blocks the UI build. initialize() is a no-op after the first call.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(browserIntegrationProvider.notifier).initialize();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Ensure the IPC server starts and is kept alive for the app's lifetime.
     ref.watch(ipcServerProvider);
 
@@ -44,7 +60,7 @@ class AppShell extends ConsumerWidget {
             child: Row(
               children: [
                 const AppSidebar(),
-                Expanded(child: child),
+                Expanded(child: widget.child),
               ],
             ),
           ),
