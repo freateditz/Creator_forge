@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
+import '../../core/config/app_config.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/logging/app_logger.dart';
 import '../../models/media_probe_result.dart';
@@ -41,7 +44,13 @@ class FfmpegServiceImpl implements FfmpegService {
   static final List<String> _candidates = _buildCandidates();
 
   static List<String> _buildCandidates() {
+    // Managed bin dir first so auto-provisioned exe takes priority.
+    final managedExe = Platform.isWindows
+        ? p.join(AppConfig.instance.binDir, 'ffmpeg.exe')
+        : p.join(AppConfig.instance.binDir, 'ffmpeg');
+
     final c = <String>[
+      managedExe,
       'ffmpeg',
       '/opt/homebrew/bin/ffmpeg',
       '/usr/local/bin/ffmpeg',
@@ -86,6 +95,8 @@ class FfmpegServiceImpl implements FfmpegService {
     }
     return null;
   }
+
+  void invalidate() => _ffmpegPath = null;
 
   @override
   Future<bool> isAvailable() async => (await _resolvePath()) != null;

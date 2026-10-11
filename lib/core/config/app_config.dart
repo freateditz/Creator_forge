@@ -12,6 +12,7 @@ class AppConfig {
   static AppConfig get instance => _instance!;
 
   late final String appDataDir;
+  late final String binDir;
   late final String tempDir;
   late final String logsDir;
   late final String modelsDir;
@@ -33,6 +34,7 @@ class AppConfig {
     final documents = await getApplicationDocumentsDirectory();
 
     appDataDir = p.join(appSupport.path, AppConstants.appName);
+    binDir = p.join(appDataDir, 'bin');
     tempDir = p.join(appDataDir, 'temp');
     logsDir = p.join(appDataDir, 'logs');
     modelsDir = p.join(appDataDir, 'models');
@@ -42,6 +44,7 @@ class AppConfig {
 
     for (final dir in [
       appDataDir,
+      binDir,
       tempDir,
       logsDir,
       modelsDir,

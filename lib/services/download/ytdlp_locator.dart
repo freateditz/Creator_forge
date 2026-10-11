@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
+import '../../core/config/app_config.dart';
 import '../../core/logging/app_logger.dart';
 
 class YtDlpLocator {
@@ -11,7 +14,13 @@ class YtDlpLocator {
   String? _resolvedPath;
 
   List<String> get _candidates {
+    // Managed bin dir is checked first so auto-provisioned exe takes priority.
+    final managedExe = Platform.isWindows
+        ? p.join(AppConfig.instance.binDir, 'yt-dlp.exe')
+        : p.join(AppConfig.instance.binDir, 'yt-dlp');
+
     final candidates = <String>[
+      managedExe,
       'yt-dlp',
       '/opt/homebrew/bin/yt-dlp',
       '/usr/local/bin/yt-dlp',

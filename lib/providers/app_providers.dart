@@ -23,6 +23,7 @@ import '../services/separation/hardware_capability_service.dart';
 import '../services/separation/model_manager.dart';
 import '../services/separation/runtime_manager.dart';
 import '../services/separation/separation_engine.dart';
+import '../services/provisioning/dependency_provisioner.dart';
 import '../services/storage/storage_service.dart';
 
 // ── Core infrastructure ─────────────────────────────────────────────────────
@@ -246,3 +247,112 @@ final ytdlpAvailableProvider = FutureProvider<bool>((ref) async {
 final ytdlpVersionProvider = FutureProvider<String?>((ref) async {
   return YtDlpLocator.instance.getVersion();
 });
+
+// ── Dependency provisioning ──────────────────────────────────────────────────
+
+final dependencyProvisionerProvider = Provider<DependencyProvisioner>((ref) {
+  return DependencyProvisioner(binDir: AppConfig.instance.binDir);
+});
+
+enum ProvisioningStatus { idle, downloading, done, error }
+
+class ProvisioningState {
+  final ProvisioningStatus status;
+  final double progress;
+  final String? errorMessage;
+
+  const ProvisioningState({
+    this.status = ProvisioningStatus.idle,
+    this.progress = 0,
+    this.errorMessage,
+  });
+
+  ProvisioningState copyWith({
+    ProvisioningStatus? status,
+    double? progress,
+    String? errorMessage,
+    bool clearError = false,
+  }) {
+    return ProvisioningState(
+      status: status ?? this.status,
+      progress: progress ?? this.progress,
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+    );
+  }
+}
+
+class YtDlpProvisioningNotifier extends Notifier<ProvisioningState> {
+  @override
+  ProvisioningState build() => const ProvisioningState();
+
+  Future<void> provision() async {
+    state = const ProvisioningState(status: ProvisioningStatus.downloading);
+    try {
+      await ref
+          .read(dependencyProvisionerProvider)
+          .provisionYtDlp(
+            onProgress: (p) => state = state.copyWith(
+              status: ProvisioningStatus.downloading,
+              progress: p,
+            ),
+          );
+      YtDlpLocator.instance.invalidate();
+      ref.invalidate(ytdlpAvailableProvider);
+      ref.invalidate(ytdlpVersionProvider);
+      state = const ProvisioningState(
+        status: ProvisioningStatus.done,
+        progress: 1,
+      );
+    } catch (e) {
+      state = ProvisioningState(
+        status: ProvisioningStatus.error,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
+  void reset() => state = const ProvisioningState();
+}
+
+final ytdlpProvisioningProvider =
+    NotifierProvider<YtDlpProvisioningNotifier, ProvisioningState>(
+      YtDlpProvisioningNotifier.new,
+    );
+
+class FfmpegProvisioningNotifier extends Notifier<ProvisioningState> {
+  @override
+  ProvisioningState build() => const ProvisioningState();
+
+  Future<void> provision() async {
+    state = const ProvisioningState(status: ProvisioningStatus.downloading);
+    try {
+      await ref
+          .read(dependencyProvisionerProvider)
+          .provisionFfmpeg(
+            onProgress: (p) => state = state.copyWith(
+              status: ProvisioningStatus.downloading,
+              progress: p,
+            ),
+          );
+      (ref.read(ffmpegServiceProvider) as FfmpegServiceImpl).invalidate();
+      ref.invalidate(ffmpegAvailableProvider);
+      ref.invalidate(ffmpegVersionProvider);
+      state = const ProvisioningState(
+        status: ProvisioningStatus.done,
+        progress: 1,
+      );
+    } catch (e) {
+      state = ProvisioningState(
+        status: ProvisioningStatus.error,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
+  void reset() => state = const ProvisioningState();
+}
+
+final ffmpegProvisioningProvider =
+    NotifierProvider<FfmpegProvisioningNotifier, ProvisioningState>(
+      FfmpegProvisioningNotifier.new,
+    );
