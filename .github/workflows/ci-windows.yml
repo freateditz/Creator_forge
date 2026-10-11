@@ -14,7 +14,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Flutter setup ─────────────────────────────────────────────────────────
+      # ── Tool setup (all three runtimes up-front so failures surface early) ──────
       - name: Setup Flutter 3.47.5
         uses: subosito/flutter-action@v2
         with:
@@ -28,10 +28,22 @@ jobs:
       - name: Flutter doctor (Windows)
         run: flutter doctor -v
 
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: browser-extension/package-lock.json
+
+      # ── Flutter checks ────────────────────────────────────────────────────────
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      # ── Dart checks ───────────────────────────────────────────────────────────
       - name: Format check
         run: dart format --output=none --set-exit-if-changed lib/ test/
 
@@ -41,47 +53,11 @@ jobs:
       - name: Unit tests
         run: flutter test
 
-      # ── Python setup (before build so failures surface early) ─────────────────
-      - name: Setup Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Native host – install PyInstaller
-        run: pip install pyinstaller==6.11.1
-
-      - name: Native host – build exe
-        working-directory: native-host
-        run: |
-          pyinstaller build_windows.spec --noconfirm --distpath dist
-          if (-not (Test-Path "dist\creator_forge_native_host.exe")) {
-            Write-Error "PyInstaller did not produce creator_forge_native_host.exe"
-            exit 1
-          }
-          $size = (Get-Item "dist\creator_forge_native_host.exe").Length
-          Write-Host "Native host exe: $([math]::Round($size/1MB, 1)) MB"
-        shell: pwsh
-
-      - name: Native host – unit tests
-        run: python native-host\test_native_host.py
-
-      - name: Native host – e2e tests
-        run: python native-host\test_e2e.py
-
-      # ── Windows release build ─────────────────────────────────────────────────
+      # ── Flutter Windows release build ─────────────────────────────────────────
       - name: Windows release build
         run: flutter build windows --release
 
-      # Copy native-host exe into the release dir so the installer can find it.
-      - name: Copy native-host exe into release tree
-        shell: pwsh
-        run: |
-          $nhDest = "build\windows\x64\runner\Release\NativeHost"
-          New-Item -ItemType Directory -Force -Path $nhDest | Out-Null
-          Copy-Item "native-host\dist\creator_forge_native_host.exe" $nhDest -Force
-          Write-Host "Copied native host exe to $nhDest"
-
-      - name: Verify build output
+      - name: Verify Flutter build output
         shell: pwsh
         run: |
           $releaseDir = "build\windows\x64\runner\Release"
@@ -97,13 +73,112 @@ jobs:
             Write-Error "flutter_assets directory not found"
             exit 1
           }
-          if (-not (Test-Path "$releaseDir\NativeHost\creator_forge_native_host.exe")) {
-            Write-Error "Native host exe not found in $releaseDir\NativeHost\"
-            exit 1
-          }
-          Write-Host "Build output verified."
+          Write-Host "Flutter build output verified."
           Get-ChildItem "$releaseDir" | Select-Object Name, Length
 
+      # ── Browser extension ─────────────────────────────────────────────────────
+      # Must run before the installer so dist/ exists when iscc reads it.
+      - name: Extension – install deps
+        working-directory: browser-extension
+        run: npm ci
+
+      - name: Extension – build
+        working-directory: browser-extension
+        run: npm run build
+
+      - name: Extension – validate manifest
+        working-directory: browser-extension
+        run: npm run validate-manifest
+
+      - name: Extension – tests
+        working-directory: browser-extension
+        run: npm test
+
+      # ── Native messaging host (PyInstaller) ───────────────────────────────────
+      - name: Native host – install PyInstaller
+        run: pip install pyinstaller==6.11.1
+
+      - name: Native host – build exe
+        working-directory: native-host
+        shell: pwsh
+        run: |
+          pyinstaller build_windows.spec --noconfirm --distpath dist
+          if (-not (Test-Path "dist\creator_forge_native_host.exe")) {
+            Write-Error "PyInstaller did not produce creator_forge_native_host.exe"
+            exit 1
+          }
+          $size = (Get-Item "dist\creator_forge_native_host.exe").Length
+          Write-Host "Native host exe: $([math]::Round($size/1MB, 1)) MB"
+
+      - name: Native host – unit tests
+        run: python native-host\test_native_host.py
+
+      - name: Native host – e2e tests
+        run: python native-host\test_e2e.py
+
+      # Copy native-host exe into the Flutter release dir so iscc can find it.
+      - name: Copy native-host exe into release tree
+        shell: pwsh
+        run: |
+          $nhDest = "build\windows\x64\runner\Release\NativeHost"
+          New-Item -ItemType Directory -Force -Path $nhDest | Out-Null
+          Copy-Item "native-host\dist\creator_forge_native_host.exe" $nhDest -Force
+          Write-Host "Copied native host exe to $nhDest"
+
+      # ── Validate all installer inputs before invoking iscc ────────────────────
+      - name: Validate installer inputs
+        shell: pwsh
+        run: |
+          $errors = @()
+
+          # Flutter release build
+          $releaseDir = "build\windows\x64\runner\Release"
+          if (-not (Test-Path "$releaseDir\creator_forge.exe")) {
+            $errors += "MISSING: $releaseDir\creator_forge.exe"
+          }
+          if (-not (Test-Path "$releaseDir\NativeHost\creator_forge_native_host.exe")) {
+            $errors += "MISSING: $releaseDir\NativeHost\creator_forge_native_host.exe"
+          }
+
+          # Browser extension dist/
+          $extDist = "browser-extension\dist"
+          if (-not (Test-Path $extDist -PathType Container)) {
+            $errors += "MISSING directory: $extDist"
+          } else {
+            if (-not (Test-Path (Join-Path $extDist "manifest.json") -PathType Leaf)) {
+              $errors += "MISSING: $extDist\manifest.json"
+            }
+            $extFiles = Get-ChildItem $extDist -Recurse -File
+            if (-not $extFiles) {
+              $errors += "EMPTY: $extDist — extension build produced no files"
+            } else {
+              Write-Host "Browser extension files verified: $($extFiles.Count) files"
+              $extFiles | ForEach-Object { Write-Host "  $($_.FullName)" }
+            }
+          }
+
+          # Native host Python script
+          if (-not (Test-Path "native-host\creator_forge_host.py")) {
+            $errors += "MISSING: native-host\creator_forge_host.py"
+          }
+
+          # Installer scripts
+          foreach ($script in @("install_native_host.ps1", "uninstall_native_host.ps1")) {
+            $p = "installer\windows\scripts\$script"
+            if (-not (Test-Path $p)) {
+              $errors += "MISSING: $p"
+            }
+          }
+
+          if ($errors.Count -gt 0) {
+            Write-Error ("Installer input validation failed:`n" + ($errors -join "`n"))
+            exit 1
+          }
+
+          Write-Host "All installer inputs verified."
+
+      # ── Upload Flutter release artifact (before installer so it's available
+      #    even if iscc fails) ──────────────────────────────────────────────────
       - name: Upload Windows build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -121,7 +196,6 @@ jobs:
 
           if (-not (Test-Path -LiteralPath $iscc)) {
             $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-
             if ($command) {
               $iscc = $command.Source
             }
@@ -129,11 +203,9 @@ jobs:
 
           if (-not (Test-Path -LiteralPath $iscc)) {
             choco install innosetup --yes --no-progress
-
             if ($LASTEXITCODE -ne 0) {
               throw "Failed to install Inno Setup."
             }
-
             $iscc = Join-Path `
               ([Environment]::GetFolderPath('ProgramFilesX86')) `
               'Inno Setup 6\ISCC.exe'
@@ -173,27 +245,3 @@ jobs:
           name: CreatorForge-1.0.0-Setup
           path: installer\windows\Output\CreatorForge-1.0.0-Setup.exe
           retention-days: 7
-
-      # ── Browser extension ─────────────────────────────────────────────────────
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: browser-extension/package-lock.json
-
-      - name: Extension – install deps
-        working-directory: browser-extension
-        run: npm ci
-
-      - name: Extension – build
-        working-directory: browser-extension
-        run: npm run build
-
-      - name: Extension – tests
-        working-directory: browser-extension
-        run: npm test
-
-      - name: Extension – validate manifest
-        working-directory: browser-extension
-        run: npm run validate-manifest
