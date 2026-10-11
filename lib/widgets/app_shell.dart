@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/theme/app_colors.dart';
 import '../providers/app_providers.dart';
 import '../routing/route_paths.dart';
 import 'app_sidebar.dart';
@@ -38,11 +39,14 @@ class AppShell extends ConsumerWidget {
         },
         child: Focus(
           autofocus: true,
-          child: Row(
-            children: [
-              const AppSidebar(),
-              Expanded(child: child),
-            ],
+          child: Material(
+            color: AppColors.background,
+            child: Row(
+              children: [
+                const AppSidebar(),
+                Expanded(child: child),
+              ],
+            ),
           ),
         ),
       ),

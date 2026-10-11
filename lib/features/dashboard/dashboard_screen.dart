@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../models/download_task.dart';
+import '../../providers/app_providers.dart';
 import '../../routing/route_paths.dart';
 import 'widgets/quick_action_card.dart';
 import 'widgets/stat_card.dart';
@@ -14,6 +16,28 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final downloads = ref.watch(downloadTasksProvider).valueOrNull ?? [];
+    final separationJobs = ref.watch(separationJobsProvider).valueOrNull ?? [];
+    final bgJobs = ref.watch(bgRemovalJobsProvider).valueOrNull ?? [];
+    final audioJobs = ref.watch(audioJobsProvider).valueOrNull ?? [];
+
+    final totalDownloads = downloads
+        .where((t) => t.status == DownloadStatus.completed)
+        .length;
+    final activeDownloads = downloads
+        .where(
+          (t) =>
+              t.status == DownloadStatus.downloading ||
+              t.status == DownloadStatus.resolving ||
+              t.status == DownloadStatus.queued ||
+              t.status == DownloadStatus.merging,
+        )
+        .length;
+    final activeProcessing =
+        separationJobs.where((j) => !j.isTerminal).length +
+        bgJobs.where((j) => !j.isTerminal).length +
+        audioJobs.where((j) => !j.isTerminal).length;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
@@ -23,11 +47,11 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             _buildHeader(),
             const SizedBox(height: 24),
-            _buildStatsRow(),
+            _buildStatsRow(totalDownloads, activeDownloads, activeProcessing),
             const SizedBox(height: 28),
             _buildQuickActions(context),
             const SizedBox(height: 28),
-            _buildRecentActivity(),
+            _buildRecentActivity(downloads),
           ],
         ),
       ),
@@ -59,37 +83,41 @@ class DashboardScreen extends ConsumerWidget {
         .slideY(begin: -0.05, end: 0);
   }
 
-  Widget _buildStatsRow() {
-    return const Row(
+  Widget _buildStatsRow(
+    int totalDownloads,
+    int activeDownloads,
+    int activeProcessing,
+  ) {
+    return Row(
           children: [
             Expanded(
               child: StatCard(
                 label: 'Total Downloads',
-                value: '0',
+                value: '$totalDownloads',
                 icon: Icons.download_done,
                 iconColor: AppColors.primary,
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Expanded(
               child: StatCard(
                 label: 'Active Downloads',
-                value: '0',
+                value: '$activeDownloads',
                 icon: Icons.downloading,
                 iconColor: AppColors.statusDownloading,
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Expanded(
               child: StatCard(
                 label: 'Processing Jobs',
-                value: '0',
+                value: '$activeProcessing',
                 icon: Icons.tune,
                 iconColor: AppColors.warning,
               ),
             ),
-            SizedBox(width: 16),
-            Expanded(
+            const SizedBox(width: 16),
+            const Expanded(
               child: StatCard(
                 label: 'Storage Used',
                 value: '—',
@@ -166,7 +194,9 @@ class DashboardScreen extends ConsumerWidget {
     ).animate().fadeIn(delay: 150.ms, duration: 300.ms);
   }
 
-  Widget _buildRecentActivity() {
+  Widget _buildRecentActivity(List<DownloadTask> downloads) {
+    final recent = downloads.reversed.take(5).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -178,35 +208,102 @@ class DashboardScreen extends ConsumerWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.border),
           ),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(48),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.inbox_outlined,
-                    size: 40,
-                    color: AppColors.textLow,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No recent activity',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textMedium,
+          child: recent.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(48),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.inbox_outlined,
+                          size: 40,
+                          color: AppColors.textLow,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No recent activity',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textMedium,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Downloads and processing jobs will appear here.',
+                          style: AppTextStyles.bodySmall,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Downloads and processing jobs will appear here.',
-                    style: AppTextStyles.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-          ),
+                )
+              : Column(
+                  children: [
+                    for (int i = 0; i < recent.length; i++) ...[
+                      _RecentDownloadRow(task: recent[i]),
+                      if (i < recent.length - 1)
+                        const Divider(height: 1, indent: 16, endIndent: 16),
+                    ],
+                  ],
+                ),
         ),
       ],
     ).animate().fadeIn(delay: 200.ms, duration: 300.ms);
+  }
+}
+
+class _RecentDownloadRow extends StatelessWidget {
+  final DownloadTask task;
+  const _RecentDownloadRow({required this.task});
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = switch (task.status) {
+      DownloadStatus.completed => AppColors.statusCompleted,
+      DownloadStatus.failed => AppColors.statusFailed,
+      DownloadStatus.cancelled => AppColors.statusCancelled,
+      DownloadStatus.downloading ||
+      DownloadStatus.merging => AppColors.statusDownloading,
+      _ => AppColors.statusQueued,
+    };
+
+    final statusLabel = switch (task.status) {
+      DownloadStatus.completed => 'Done',
+      DownloadStatus.failed => 'Failed',
+      DownloadStatus.cancelled => 'Cancelled',
+      DownloadStatus.downloading => 'Downloading',
+      DownloadStatus.merging => 'Merging',
+      DownloadStatus.resolving => 'Resolving',
+      DownloadStatus.queued => 'Queued',
+      DownloadStatus.paused => 'Paused',
+    };
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: statusColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              task.title ?? task.url,
+              style: AppTextStyles.bodySmall,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            statusLabel,
+            style: AppTextStyles.caption.copyWith(color: statusColor),
+          ),
+        ],
+      ),
+    );
   }
 }
