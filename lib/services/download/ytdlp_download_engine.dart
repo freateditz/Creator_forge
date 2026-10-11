@@ -143,7 +143,8 @@ class YtDlpDownloadEngine implements DownloadEngine {
       completedAt: DateTime.now(),
     );
     await _cleanTaskTempDir(taskId);
-    await _persistTask(_tasks[taskId]!);
+    final cancelledTask = _tasks[taskId];
+    if (cancelledTask != null) await _persistTask(cancelledTask);
   }
 
   @override
@@ -267,6 +268,14 @@ class YtDlpDownloadEngine implements DownloadEngine {
 
     // ── Locate yt-dlp ────────────────────────────────────────────────────────
     final ytdlpPath = await _locator.resolve();
+
+    // The task may have been removed or cancelled while the locator was running.
+    if (!_isTaskActive(taskId)) {
+      await _cleanTaskTempDir(taskId);
+      _activeCount--;
+      _processQueue();
+      return;
+    }
     if (ytdlpPath == null) {
       _finishTask(
         taskId,
@@ -298,6 +307,14 @@ class YtDlpDownloadEngine implements DownloadEngine {
     final ffmpegPath = await _ffmpegService.getPath();
     final ffmpegDir = ffmpegPath != null ? p.dirname(ffmpegPath) : null;
 
+    // Task may have been cancelled while waiting for FFmpeg path.
+    if (!_isTaskActive(taskId)) {
+      await _cleanTaskTempDir(taskId);
+      _activeCount--;
+      _processQueue();
+      return;
+    }
+
     final isResume = _resumedTasks.remove(taskId);
 
     final args = <String>[
@@ -328,7 +345,8 @@ class YtDlpDownloadEngine implements DownloadEngine {
 
     _log.info('Starting download [$taskId]: $ytdlpPath ${args.join(' ')}');
     _updateTask(taskId, status: DownloadStatus.resolving);
-    await _persistTask(_tasks[taskId]!);
+    final resolvingTask = _tasks[taskId];
+    if (resolvingTask != null) await _persistTask(resolvingTask);
 
     // ── Launch process ───────────────────────────────────────────────────────
     Process process;
@@ -596,6 +614,10 @@ class YtDlpDownloadEngine implements DownloadEngine {
     String? errorMessage,
     DateTime? completedAt,
   }) {
+    if (_disposed) {
+      _activeCount--;
+      return;
+    }
     _updateTask(
       taskId,
       status: status,
@@ -604,9 +626,22 @@ class YtDlpDownloadEngine implements DownloadEngine {
       errorMessage: errorMessage,
       completedAt: completedAt ?? DateTime.now(),
     );
-    _persistTask(_tasks[taskId]!).ignore();
+    // The task may have been removed by remove() or clearCompleted() before
+    // this callback ran — that is a valid lifecycle transition, not a bug.
+    final task = _tasks[taskId];
+    if (task != null) _persistTask(task).ignore();
     _activeCount--;
     _processQueue();
+  }
+
+  /// Returns true when [taskId] is present in [_tasks] and not in a terminal
+  /// state that should abort an in-flight download startup.
+  bool _isTaskActive(String taskId) {
+    if (_disposed) return false;
+    final task = _tasks[taskId];
+    return task != null &&
+        task.status != DownloadStatus.cancelled &&
+        task.status != DownloadStatus.completed;
   }
 
   Future<void> _persistTask(DownloadTask task) async {
