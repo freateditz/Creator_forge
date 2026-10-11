@@ -84,24 +84,55 @@ jobs:
           retention-days: 7
 
       # ── Inno Setup installer ──────────────────────────────────────────────────
-      - name: Install Inno Setup 6
+      - name: Detect or install Inno Setup 6
         shell: pwsh
         run: |
-          # Use Chocolatey (pre-installed on GitHub runners)
-          choco install innosetup --version 6.3.3 --no-progress -y
-          # Add to PATH for subsequent steps
-          echo "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
+          $iscc = Join-Path `
+            ([Environment]::GetFolderPath('ProgramFilesX86')) `
+            'Inno Setup 6\ISCC.exe'
+
+          if (-not (Test-Path -LiteralPath $iscc)) {
+            $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+
+            if ($command) {
+              $iscc = $command.Source
+            }
+          }
+
+          if (-not (Test-Path -LiteralPath $iscc)) {
+            choco install innosetup --yes --no-progress
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to install Inno Setup."
+            }
+
+            $iscc = Join-Path `
+              ([Environment]::GetFolderPath('ProgramFilesX86')) `
+              'Inno Setup 6\ISCC.exe'
+          }
+
+          if (-not (Test-Path -LiteralPath $iscc)) {
+            throw "ISCC.exe was not found after Inno Setup detection/installation."
+          }
+
+          "ISCC_PATH=$iscc" | Out-File `
+            -FilePath $env:GITHUB_ENV `
+            -Encoding utf8 `
+            -Append
+
+          Write-Host "Using Inno Setup compiler: $iscc"
 
       - name: Build installer
         shell: pwsh
         run: |
-          iscc /Q installer\windows\creator_forge.iss
+          & "$env:ISCC_PATH" installer\windows\creator_forge.iss
+
           if ($LASTEXITCODE -ne 0) {
-            Write-Error "Inno Setup compilation failed (exit $LASTEXITCODE)"
-            exit 1
+            exit $LASTEXITCODE
           }
+
           $installer = "installer\windows\Output\CreatorForge-1.0.0-Setup.exe"
-          if (-not (Test-Path $installer)) {
+          if (-not (Test-Path -LiteralPath $installer)) {
             Write-Error "Installer not produced at expected path: $installer"
             exit 1
           }
