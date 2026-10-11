@@ -11,8 +11,8 @@ final _kExtensionIdRe = RegExp(r'^[a-z]{32}$');
 
 /// Metadata about a detected browser installation.
 class BrowserInfo {
-  final String id;        // 'chrome' | 'edge' | 'brave'
-  final String name;      // human-readable name
+  final String id; // 'chrome' | 'edge' | 'brave'
+  final String name; // human-readable name
   final String? execPath; // absolute path to the browser executable
 
   const BrowserInfo({required this.id, required this.name, this.execPath});
@@ -165,11 +165,9 @@ class NativeHostService {
       // Check HKLM first; fall back to HKCU.
       var execPath = await _readRegistryDefault('HKLM', entry.value);
       execPath ??= await _readRegistryDefault('HKCU', entry.value);
-      results.add(BrowserInfo(
-        id: id,
-        name: _browserNames[id]!,
-        execPath: execPath,
-      ));
+      results.add(
+        BrowserInfo(id: id, name: _browserNames[id]!, execPath: execPath),
+      );
     }
     return results;
   }
@@ -255,7 +253,8 @@ class NativeHostService {
     final name = manifest['name'] as String?;
     final type = manifest['type'] as String?;
     final execPath = manifest['path'] as String?;
-    final origins = (manifest['allowed_origins'] as List<dynamic>?)
+    final origins =
+        (manifest['allowed_origins'] as List<dynamic>?)
             ?.map((e) => e.toString())
             .toList() ??
         const [];
@@ -345,9 +344,9 @@ class NativeHostService {
     };
 
     try {
-      File(manifestPath).writeAsStringSync(
-        const JsonEncoder.withIndent('  ').convert(manifest),
-      );
+      File(
+        manifestPath,
+      ).writeAsStringSync(const JsonEncoder.withIndent('  ').convert(manifest));
     } catch (e) {
       return RegistrationResult(
         success: false,
@@ -411,11 +410,9 @@ class NativeHostService {
     final exec = browser.execPath;
     if (exec == null) return false;
     try {
-      await Process.start(
-        exec,
-        ['chrome://extensions/'],
-        mode: ProcessStartMode.detached,
-      );
+      await Process.start(exec, [
+        'chrome://extensions/',
+      ], mode: ProcessStartMode.detached);
       return true;
     } catch (e) {
       _log.warning('Could not open extensions page: $e');
@@ -427,11 +424,9 @@ class NativeHostService {
   Future<bool> revealFolder(String folderPath) async {
     if (!Platform.isWindows) return false;
     try {
-      await Process.start(
-        'explorer.exe',
-        [folderPath],
-        mode: ProcessStartMode.detached,
-      );
+      await Process.start('explorer.exe', [
+        folderPath,
+      ], mode: ProcessStartMode.detached);
       return true;
     } catch (e) {
       _log.warning('Could not open explorer: $e');
@@ -444,18 +439,18 @@ class NativeHostService {
   /// Reads the default (unnamed) value of a Windows registry key via `reg query`.
   Future<String?> _readRegistryDefault(String hive, String subKey) async {
     try {
-      final result = await Process.run(
-        'reg',
-        ['query', '$hive\\$subKey', '/ve'],
-        runInShell: false,
-      );
+      final result = await Process.run('reg', [
+        'query',
+        '$hive\\$subKey',
+        '/ve',
+      ], runInShell: false);
       if (result.exitCode != 0) return null;
       final stdout = (result.stdout as String).trim();
       // Output line format:  "    (Default)    REG_SZ    <value>"
-      final match =
-          RegExp(r'\(Default\)\s+REG_\w+\s+(.+)$', multiLine: true).firstMatch(
-            stdout,
-          );
+      final match = RegExp(
+        r'\(Default\)\s+REG_\w+\s+(.+)$',
+        multiLine: true,
+      ).firstMatch(stdout);
       return match?.group(1)?.trim();
     } catch (e) {
       _log.fine('Registry read failed ($hive\\$subKey): $e');
@@ -465,15 +460,12 @@ class NativeHostService {
 
   Future<({bool success, String? error})> _runReg(List<String> args) async {
     try {
-      final result = await Process.run(
-        'reg',
-        args,
-        runInShell: false,
-      );
+      final result = await Process.run('reg', args, runInShell: false);
       if (result.exitCode != 0) {
         return (
           success: false,
-          error: 'reg ${args.first} failed (exit ${result.exitCode}): '
+          error:
+              'reg ${args.first} failed (exit ${result.exitCode}): '
               '${(result.stderr as String).trim()}',
         );
       }

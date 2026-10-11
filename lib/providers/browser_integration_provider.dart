@@ -64,32 +64,29 @@ class BrowserIntegrationState {
     bool clearError = false,
     bool clearDiagnostics = false,
     bool clearSelectedBrowser = false,
-  }) =>
-      BrowserIntegrationState(
-        stage: stage ?? this.stage,
-        browsers: browsers ?? this.browsers,
-        selectedBrowserId: clearSelectedBrowser
-            ? null
-            : (selectedBrowserId ?? this.selectedBrowserId),
-        diagnostics:
-            clearDiagnostics ? null : (diagnostics ?? this.diagnostics),
-        error: clearError ? null : (error ?? this.error),
-        lastPingAt: lastPingAt ?? this.lastPingAt,
-      );
+  }) => BrowserIntegrationState(
+    stage: stage ?? this.stage,
+    browsers: browsers ?? this.browsers,
+    selectedBrowserId: clearSelectedBrowser
+        ? null
+        : (selectedBrowserId ?? this.selectedBrowserId),
+    diagnostics: clearDiagnostics ? null : (diagnostics ?? this.diagnostics),
+    error: clearError ? null : (error ?? this.error),
+    lastPingAt: lastPingAt ?? this.lastPingAt,
+  );
 
   BrowserInfo? get selectedBrowser => browsers.firstWhere(
-        (b) => b.id == selectedBrowserId,
-        orElse: () => browsers.firstWhere(
-          (b) => b.isInstalled,
-          orElse: () => const BrowserInfo(id: '', name: ''),
-        ),
-      );
+    (b) => b.id == selectedBrowserId,
+    orElse: () => browsers.firstWhere(
+      (b) => b.isInstalled,
+      orElse: () => const BrowserInfo(id: '', name: ''),
+    ),
+  );
 }
 
 // ── Notifier ──────────────────────────────────────────────────────────────────
 
-class BrowserIntegrationNotifier
-    extends Notifier<BrowserIntegrationState> {
+class BrowserIntegrationNotifier extends Notifier<BrowserIntegrationState> {
   late NativeHostService _svc;
   late IpcServer _ipc;
   StreamSubscription<DateTime>? _pingSub;
@@ -113,7 +110,10 @@ class BrowserIntegrationNotifier
       return;
     }
 
-    state = state.copyWith(stage: BrowserSetupStage.detecting, clearError: true);
+    state = state.copyWith(
+      stage: BrowserSetupStage.detecting,
+      clearError: true,
+    );
     final browsers = await _svc.detectBrowsers();
 
     if (browsers.every((b) => !b.isInstalled)) {
@@ -256,8 +256,9 @@ class BrowserIntegrationNotifier
     if (diag.allowedOrigins.isNotEmpty) {
       final origin = diag.allowedOrigins.first;
       // Strip 'chrome-extension://' prefix and trailing '/'.
-      existingId =
-          origin.replaceFirst('chrome-extension://', '').replaceAll('/', '');
+      existingId = origin
+          .replaceFirst('chrome-extension://', '')
+          .replaceAll('/', '');
     }
 
     state = state.copyWith(
@@ -307,5 +308,7 @@ class BrowserIntegrationNotifier
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-final browserIntegrationProvider = NotifierProvider<BrowserIntegrationNotifier,
-    BrowserIntegrationState>(BrowserIntegrationNotifier.new);
+final browserIntegrationProvider =
+    NotifierProvider<BrowserIntegrationNotifier, BrowserIntegrationState>(
+      BrowserIntegrationNotifier.new,
+    );

@@ -67,18 +67,19 @@ class _BrowserDownloadsScreenState
             loading: () => const SizedBox.shrink(),
             error: (e, st) => const SizedBox.shrink(),
             data: (tasks) {
-              final browserTasks =
-                  tasks.where((t) => browserIds.contains(t.id)).toList();
+              final browserTasks = tasks
+                  .where((t) => browserIds.contains(t.id))
+                  .toList();
               if (browserTasks.isEmpty) return const SizedBox.shrink();
               return _BrowserQueue(
                 tasks: browserTasks,
-                onClearCompleted: browserTasks.any(
-                  (t) =>
-                      t.status == DownloadStatus.completed ||
-                      t.status == DownloadStatus.cancelled,
-                )
-                    ? () =>
-                        ref.read(downloadEngineProvider).clearCompleted()
+                onClearCompleted:
+                    browserTasks.any(
+                      (t) =>
+                          t.status == DownloadStatus.completed ||
+                          t.status == DownloadStatus.cancelled,
+                    )
+                    ? () => ref.read(downloadEngineProvider).clearCompleted()
                     : null,
               );
             },
@@ -184,39 +185,38 @@ class _WindowsWizard extends ConsumerWidget {
     final notifier = ref.read(browserIntegrationProvider.notifier);
 
     return switch (state.stage) {
-      BrowserSetupStage.initial ||
-      BrowserSetupStage.detecting =>
+      BrowserSetupStage.initial || BrowserSetupStage.detecting =>
         const _LoadingCard(label: 'Detecting installed browsers…'),
       BrowserSetupStage.noBrowserFound => _NoBrowserCard(
-          onRefresh: notifier.initialize,
-        ),
+        onRefresh: notifier.initialize,
+      ),
       BrowserSetupStage.idle => _BrowserSelectionCard(
-          state: state,
-          onSelectBrowser: notifier.selectBrowser,
-          onBeginSetup: () => _showExtensionIdDialog(context, ref, state),
-          onOpenExtensionsPage: notifier.openExtensionsPage,
-        ),
+        state: state,
+        onSelectBrowser: notifier.selectBrowser,
+        onBeginSetup: () => _showExtensionIdDialog(context, ref, state),
+        onOpenExtensionsPage: notifier.openExtensionsPage,
+      ),
       BrowserSetupStage.registering => const _LoadingCard(
-          label: 'Registering native host…',
-        ),
+        label: 'Registering native host…',
+      ),
       BrowserSetupStage.waitingForConnection => _WaitingCard(
-          state: state,
-          onTimeout: () => notifier.waitForConnection(),
-          onOpenExtensionsPage: notifier.openExtensionsPage,
-        ),
+        state: state,
+        onTimeout: () => notifier.waitForConnection(),
+        onOpenExtensionsPage: notifier.openExtensionsPage,
+      ),
       BrowserSetupStage.connected => _ConnectedCard(
-          state: state,
-          onRepair: notifier.repair,
-          onCopyDiagnostics: () =>
-              _copyReport(context, notifier.buildDiagnosticsReport()),
-        ),
+        state: state,
+        onRepair: notifier.repair,
+        onCopyDiagnostics: () =>
+            _copyReport(context, notifier.buildDiagnosticsReport()),
+      ),
       BrowserSetupStage.error => _ErrorCard(
-          state: state,
-          onRepair: notifier.repair,
-          onRetry: () => _showExtensionIdDialog(context, ref, state),
-          onCopyDiagnostics: () =>
-              _copyReport(context, notifier.buildDiagnosticsReport()),
-        ),
+        state: state,
+        onRepair: notifier.repair,
+        onRetry: () => _showExtensionIdDialog(context, ref, state),
+        onCopyDiagnostics: () =>
+            _copyReport(context, notifier.buildDiagnosticsReport()),
+      ),
     };
   }
 
@@ -281,11 +281,16 @@ class _NoBrowserCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.browser_not_supported_outlined,
-                  color: AppColors.warning, size: 22),
+              const Icon(
+                Icons.browser_not_supported_outlined,
+                color: AppColors.warning,
+                size: 22,
+              ),
               const SizedBox(width: 10),
-              Text('No supported browser detected',
-                  style: AppTextStyles.labelLarge),
+              Text(
+                'No supported browser detected',
+                style: AppTextStyles.labelLarge,
+              ),
             ],
           ),
           const SizedBox(height: 10),
@@ -347,9 +352,9 @@ class _BrowserSelectionCard extends StatelessWidget {
           Text(
             isConfigured
                 ? 'The native host is registered. '
-                    'To verify the connection, open the extension popup.'
+                      'To verify the connection, open the extension popup.'
                 : 'Select a browser and follow the steps to connect '
-                    'CreatorForge to your browser extension.',
+                      'CreatorForge to your browser extension.',
             style: AppTextStyles.bodySmall,
           ),
           const SizedBox(height: 14),
@@ -360,8 +365,7 @@ class _BrowserSelectionCard extends StatelessWidget {
                 (b) => _BrowserTile(
                   browser: b,
                   isSelected: state.selectedBrowserId == b.id,
-                  diagnostics:
-                      state.selectedBrowserId == b.id ? diag : null,
+                  diagnostics: state.selectedBrowserId == b.id ? diag : null,
                   onTap: () => onSelectBrowser(b.id),
                 ),
               ),
@@ -434,19 +438,14 @@ class _BrowserTile extends StatelessWidget {
             Icon(
               Icons.web,
               size: 18,
-              color:
-                  isSelected ? AppColors.primary : AppColors.textMedium,
+              color: isSelected ? AppColors.primary : AppColors.textMedium,
             ),
             const SizedBox(width: 10),
             Expanded(
-              child:
-                  Text(browser.name, style: AppTextStyles.bodyMedium),
+              child: Text(browser.name, style: AppTextStyles.bodyMedium),
             ),
             if (healthy)
-              const _StatusDot(
-                color: AppColors.success,
-                label: 'Registered',
-              )
+              const _StatusDot(color: AppColors.success, label: 'Registered')
             else
               const _StatusDot(
                 color: AppColors.textLow,
@@ -474,9 +473,7 @@ class _WaitingCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Auto-start waiting when card is shown.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(browserIntegrationProvider.notifier)
-          .waitForConnection();
+      ref.read(browserIntegrationProvider.notifier).waitForConnection();
     });
 
     return _Card(
@@ -651,9 +648,7 @@ class _ErrorCard extends StatelessWidget {
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh, size: 16),
                 label: const Text('Try Again'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                ),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.error),
               ),
               OutlinedButton.icon(
                 onPressed: onRepair,
@@ -685,8 +680,7 @@ class _ExtensionIdDialog extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_ExtensionIdDialog> createState() =>
-      _ExtensionIdDialogState();
+  ConsumerState<_ExtensionIdDialog> createState() => _ExtensionIdDialogState();
 }
 
 class _ExtensionIdDialogState extends ConsumerState<_ExtensionIdDialog> {
@@ -755,8 +749,7 @@ class _ExtensionIdDialogState extends ConsumerState<_ExtensionIdDialog> {
                       // Reveal the dist/ folder in Explorer.
                       // Use the path relative to the app install dir.
                       const distRelPath = r'browser-extension\dist';
-                      final appDir =
-                          _pDirname(Platform.resolvedExecutable);
+                      final appDir = _pDirname(Platform.resolvedExecutable);
                       final distPath = '$appDir\\$distRelPath';
                       nativeSvc.revealFolder(distPath);
                     },
@@ -848,11 +841,7 @@ class _Card extends StatelessWidget {
   final Color? borderColor;
   final Color? backgroundColor;
 
-  const _Card({
-    required this.child,
-    this.borderColor,
-    this.backgroundColor,
-  });
+  const _Card({required this.child, this.borderColor, this.backgroundColor});
 
   @override
   Widget build(BuildContext context) {
@@ -900,7 +889,10 @@ class _DiagnosticsSummary extends StatelessWidget {
     final checks = [
       (label: 'Registry key', ok: diag.registryKeyPresent),
       (label: 'Manifest file', ok: diag.manifestFilePresent),
-      (label: 'Manifest valid', ok: diag.manifestNameCorrect && diag.manifestTypeCorrect),
+      (
+        label: 'Manifest valid',
+        ok: diag.manifestNameCorrect && diag.manifestTypeCorrect,
+      ),
       (label: 'Host executable', ok: diag.hostExecPresent),
       (label: 'Extension ID set', ok: diag.allowedOrigins.isNotEmpty),
     ];
@@ -912,9 +904,7 @@ class _DiagnosticsSummary extends StatelessWidget {
             (c) => Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: c.ok
-                    ? AppColors.successSurface
-                    : AppColors.errorSurface,
+                color: c.ok ? AppColors.successSurface : AppColors.errorSurface,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -1000,11 +990,10 @@ class _LinkChip extends StatelessWidget {
       onPressed: () {
         // On Windows, open the URL in the default browser.
         if (Platform.isWindows) {
-          Process.start(
-            'rundll32',
-            ['url.dll,FileProtocolHandler', url],
-            mode: ProcessStartMode.detached,
-          ).ignore();
+          Process.start('rundll32', [
+            'url.dll,FileProtocolHandler',
+            url,
+          ], mode: ProcessStartMode.detached).ignore();
         }
       },
     );
@@ -1056,8 +1045,10 @@ class _MacOsInstructionsState extends State<_MacOsInstructions> {
             borderRadius: BorderRadius.circular(6),
             child: Row(
               children: [
-                Text('Manual setup instructions',
-                    style: AppTextStyles.labelMedium),
+                Text(
+                  'Manual setup instructions',
+                  style: AppTextStyles.labelMedium,
+                ),
                 const SizedBox(width: 6),
                 Icon(
                   _expanded
@@ -1087,15 +1078,13 @@ class _MacOsInstructionsState extends State<_MacOsInstructions> {
             const _ManualStep(
               number: '2',
               title: 'Load the browser extension',
-              description:
-                  'Open Chrome or Edge → chrome://extensions/ → Enable Developer mode → Load unpacked → select browser-extension/dist/',
+              description: 'Open Chrome or Edge → chrome://extensions/ → Enable Developer mode → Load unpacked → select browser-extension/dist/',
             ),
             const SizedBox(height: 10),
             const _ManualStep(
               number: '3',
               title: 'Register the extension ID',
-              description:
-                  'Copy the 32-character ID shown under the extension and re-run the install script with that ID.',
+              description: 'Copy the 32-character ID shown under the extension and re-run the install script with that ID.',
             ),
           ],
         ],
@@ -1158,8 +1147,10 @@ class _ManualStep extends StatelessWidget {
                     );
                   },
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(4),
@@ -1168,14 +1159,18 @@ class _ManualStep extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.copy_rounded,
-                            size: 12, color: AppColors.textMedium),
+                        const Icon(
+                          Icons.copy_rounded,
+                          size: 12,
+                          color: AppColors.textMedium,
+                        ),
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
                             copyText!,
-                            style: AppTextStyles.caption
-                                .copyWith(fontFamily: 'monospace'),
+                            style: AppTextStyles.caption.copyWith(
+                              fontFamily: 'monospace',
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),

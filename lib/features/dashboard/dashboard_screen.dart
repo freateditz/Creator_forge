@@ -48,7 +48,12 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             _buildHeader(),
             const SizedBox(height: 24),
-            _buildStatsRow(totalDownloads, activeDownloads, activeProcessing, dirSizeBytes),
+            _buildStatsRow(
+              totalDownloads,
+              activeDownloads,
+              activeProcessing,
+              dirSizeBytes,
+            ),
             const SizedBox(height: 28),
             _buildQuickActions(context),
             const SizedBox(height: 28),

@@ -9,35 +9,35 @@ void main() {
   group('NativeHostService.validateExtensionId', () {
     test('accepts a valid 32-char lowercase ID', () {
       expect(
-        NativeHostService.validateExtensionId('abcdefghijklmnopqrstuvwxyzabcdef'),
+        NativeHostService.validateExtensionId(
+          'abcdefghijklmnopqrstuvwxyzabcdef',
+        ),
         isNull,
       );
     });
 
     test('rejects an ID that is too short', () {
-      expect(
-        NativeHostService.validateExtensionId('abcdef'),
-        isNotNull,
-      );
+      expect(NativeHostService.validateExtensionId('abcdef'), isNotNull);
     });
 
     test('rejects an ID that is too long', () {
-      expect(
-        NativeHostService.validateExtensionId('a' * 33),
-        isNotNull,
-      );
+      expect(NativeHostService.validateExtensionId('a' * 33), isNotNull);
     });
 
     test('rejects an ID containing uppercase letters', () {
       expect(
-        NativeHostService.validateExtensionId('ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEF'),
+        NativeHostService.validateExtensionId(
+          'ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEF',
+        ),
         isNotNull,
       );
     });
 
     test('rejects an ID containing digits', () {
       expect(
-        NativeHostService.validateExtensionId('abcdefghijklmnopqrstuvwxyz123456'),
+        NativeHostService.validateExtensionId(
+          'abcdefghijklmnopqrstuvwxyz123456',
+        ),
         isNotNull,
       );
     });
@@ -97,10 +97,12 @@ void main() {
         registryKeyPresent: true,
         registryManifestPath: healthy.registryManifestPath,
         manifestFilePresent: true,
-        manifestNameCorrect: false,   // wrong name
+        manifestNameCorrect: false, // wrong name
         manifestTypeCorrect: true,
         hostExecPresent: true,
-        allowedOrigins: const ['chrome-extension://abcdefghijklmnopqrstuvwxyzabcdef/'],
+        allowedOrigins: const [
+          'chrome-extension://abcdefghijklmnopqrstuvwxyzabcdef/',
+        ],
       );
       expect(d.isHealthy, isFalse);
     });
@@ -113,7 +115,7 @@ void main() {
         manifestNameCorrect: true,
         manifestTypeCorrect: true,
         hostExecPresent: true,
-        allowedOrigins: [],    // no extension ID set
+        allowedOrigins: [], // no extension ID set
       );
       expect(d.isHealthy, isFalse);
     });
@@ -175,14 +177,17 @@ void main() {
   });
 
   group('NativeHostService.diagnose (non-Windows)', () {
-    test('returns not-registered state with explanatory error on macOS', () async {
-      if (Platform.isWindows) return;
-      final svc = NativeHostService();
-      final diag = await svc.diagnose('chrome');
-      expect(diag.isHealthy, isFalse);
-      expect(diag.parseError, isNotNull);
-      expect(diag.registryKeyPresent, isFalse);
-    });
+    test(
+      'returns not-registered state with explanatory error on macOS',
+      () async {
+        if (Platform.isWindows) return;
+        final svc = NativeHostService();
+        final diag = await svc.diagnose('chrome');
+        expect(diag.isHealthy, isFalse);
+        expect(diag.parseError, isNotNull);
+        expect(diag.registryKeyPresent, isFalse);
+      },
+    );
   });
 
   group('NativeHostService.registerHost (non-Windows)', () {

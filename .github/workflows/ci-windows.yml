@@ -33,7 +33,7 @@ jobs:
 
       # ── Dart checks ───────────────────────────────────────────────────────────
       - name: Format check
-        run: dart format --set-exit-if-changed lib/ test/
+        run: dart format --output=none --set-exit-if-changed lib/ test/
 
       - name: Static analysis
         run: flutter analyze
