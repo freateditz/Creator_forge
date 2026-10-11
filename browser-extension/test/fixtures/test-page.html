@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CreatorForge Extension Test Page</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #111; color: #eee; }
+    h1 { color: #7B68EE; }
+    section { margin: 20px 0; padding: 16px; background: #1a1a1c; border-radius: 8px; }
+    video, audio { width: 100%; margin-top: 8px; }
+    label { display: block; font-size: 13px; color: #aaa; margin-bottom: 4px; }
+    button { background: #7B68EE; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; margin-top: 8px; }
+  </style>
+</head>
+<body>
+<h1>CreatorForge Extension — Test Page</h1>
+<p>Open the CreatorForge extension to see detected media candidates.</p>
+
+<!-- Test 1: Direct MP4 video -->
+<section>
+  <label>Test 1: Direct MP4 (should be detected as "direct")</label>
+  <video controls preload="metadata">
+    <source src="sample.mp4" type="video/mp4">
+    Your browser does not support video.
+  </video>
+</section>
+
+<!-- Test 2: Direct WebM video -->
+<section>
+  <label>Test 2: WebM video (should be detected as "direct")</label>
+  <video controls preload="metadata" src="sample.webm"></video>
+</section>
+
+<!-- Test 3: Audio element -->
+<section>
+  <label>Test 3: Audio element</label>
+  <audio controls src="sample.mp3"></audio>
+</section>
+
+<!-- Test 4: Multiple sources -->
+<section>
+  <label>Test 4: Video with multiple source elements (deduplication)</label>
+  <video controls preload="metadata">
+    <source src="sample.mp4" type="video/mp4">
+    <source src="sample.webm" type="video/webm">
+  </video>
+</section>
+
+<!-- Test 5: HLS stream -->
+<section>
+  <label>Test 5: HLS stream URL (should be detected as "stream")</label>
+  <video controls preload="metadata" src="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"></video>
+</section>
+
+<!-- Test 6: Dynamically added video -->
+<section>
+  <label>Test 6: Dynamically added video (MutationObserver test)</label>
+  <button onclick="addDynamicVideo()">Add Video Dynamically</button>
+  <div id="dynamic-container"></div>
+</section>
+
+<!-- Test 7: Unsupported / invalid source -->
+<section>
+  <label>Test 7: Unsupported source (data: URI)</label>
+  <video controls src="data:video/mp4;base64,AAAA" style="width:80px;height:60px"></video>
+</section>
+
+<script>
+function addDynamicVideo() {
+  const v = document.createElement('video');
+  v.src = 'https://example.com/dynamic-video.mp4';
+  v.controls = true;
+  v.style.width = '100%';
+  document.getElementById('dynamic-container').appendChild(v);
+}
+</script>
+
+<p style="color:#555;font-size:12px;margin-top:40px">
+  Note: For the Direct MP4/WebM/MP3 tests to work, place sample.mp4, sample.webm, sample.mp3
+  fixture files in the same directory as this HTML file and serve via a local HTTP server
+  (e.g., <code>python3 -m http.server 8080</code>).
+</p>
+</body>
+</html>

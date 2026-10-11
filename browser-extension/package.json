@@ -1,0 +1,23 @@
+{
+  "name": "creatorforge-extension",
+  "version": "1.0.0",
+  "description": "CreatorForge browser extension",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "build:watch": "node build.mjs --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "validate-manifest": "node -e \"JSON.parse(require('fs').readFileSync('manifest.json','utf8')); console.log('manifest.json: OK');\""
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.278",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8",
+    "jsdom": "^25.0.1",
+    "@vitest/coverage-v8": "^2.1.8"
+  }
+}

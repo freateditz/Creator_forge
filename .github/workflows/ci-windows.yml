@@ -1,0 +1,140 @@
+name: CI – Windows
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Flutter setup ─────────────────────────────────────────────────────────
+      - name: Setup Flutter 3.47.5
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.5"
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Flutter doctor (Windows)
+        run: flutter doctor -v
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      # ── Dart checks ───────────────────────────────────────────────────────────
+      - name: Format check
+        run: dart format --set-exit-if-changed lib/ test/
+
+      - name: Static analysis
+        run: flutter analyze
+
+      - name: Unit tests
+        run: flutter test
+
+      # ── Python setup (before build so failures surface early) ─────────────────
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Native host – unit tests
+        run: python native-host\test_native_host.py
+
+      - name: Native host – e2e tests
+        run: python native-host\test_e2e.py
+
+      # ── Windows release build ─────────────────────────────────────────────────
+      - name: Windows release build
+        run: flutter build windows --release
+
+      - name: Verify build output
+        shell: pwsh
+        run: |
+          $releaseDir = "build\windows\x64\runner\Release"
+          if (-not (Test-Path "$releaseDir\creator_forge.exe")) {
+            Write-Error "creator_forge.exe not found in $releaseDir"
+            exit 1
+          }
+          if (-not (Test-Path "$releaseDir\flutter_windows.dll")) {
+            Write-Error "flutter_windows.dll not found in $releaseDir"
+            exit 1
+          }
+          if (-not (Test-Path "$releaseDir\data\flutter_assets")) {
+            Write-Error "flutter_assets directory not found"
+            exit 1
+          }
+          Write-Host "Build output verified."
+          Get-ChildItem "$releaseDir" | Select-Object Name, Length
+
+      - name: Upload Windows build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: creator_forge_windows_release
+          path: build\windows\x64\runner\Release\
+          retention-days: 7
+
+      # ── Inno Setup installer ──────────────────────────────────────────────────
+      - name: Install Inno Setup 6
+        shell: pwsh
+        run: |
+          # Use Chocolatey (pre-installed on GitHub runners)
+          choco install innosetup --version 6.3.3 --no-progress -y
+          # Add to PATH for subsequent steps
+          echo "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          iscc /Q installer\windows\creator_forge.iss
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Inno Setup compilation failed (exit $LASTEXITCODE)"
+            exit 1
+          }
+          $installer = "installer\windows\Output\CreatorForge-1.0.0-Setup.exe"
+          if (-not (Test-Path $installer)) {
+            Write-Error "Installer not produced at expected path: $installer"
+            exit 1
+          }
+          $size = (Get-Item $installer).Length
+          Write-Host "Installer produced: $installer ($([math]::Round($size / 1MB, 1)) MB)"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CreatorForge-1.0.0-Setup
+          path: installer\windows\Output\CreatorForge-1.0.0-Setup.exe
+          retention-days: 7
+
+      # ── Browser extension ─────────────────────────────────────────────────────
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: browser-extension/package-lock.json
+
+      - name: Extension – install deps
+        working-directory: browser-extension
+        run: npm ci
+
+      - name: Extension – build
+        working-directory: browser-extension
+        run: npm run build
+
+      - name: Extension – tests
+        working-directory: browser-extension
+        run: npm test
+
+      - name: Extension – validate manifest
+        working-directory: browser-extension
+        run: npm run validate-manifest
