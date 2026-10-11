@@ -24,6 +24,12 @@ class IpcServer {
   bool _started = false;
   bool _disposed = false;
 
+  // Emits DateTime whenever the IPC server successfully processes a PING from
+  // the browser extension — used by the integration wizard to confirm a live
+  // end-to-end connection.
+  final _pingController = StreamController<DateTime>.broadcast();
+  Stream<DateTime> get pingStream => _pingController.stream;
+
   String get _ipcDir => p.join(AppConfig.instance.appDataDir, 'ipc');
   String get _socketPath => p.join(_ipcDir, 'creator_forge.sock');
   String get _connFilePath => p.join(_ipcDir, 'creator_forge.conn');
@@ -96,7 +102,17 @@ class IpcServer {
   }
 
   void _handleSocket(Socket socket, {String? expectedToken}) {
-    final conn = _IpcConnection(socket, _handler, expectedToken, _log);
+    final conn = _IpcConnection(
+      socket,
+      _handler,
+      expectedToken,
+      _log,
+      onPing: () {
+        if (!_pingController.isClosed) {
+          _pingController.add(DateTime.now());
+        }
+      },
+    );
     conn.start();
   }
 
@@ -113,6 +129,7 @@ class IpcServer {
     _disposed = true;
     await _server?.close();
     _server = null;
+    await _pingController.close();
     _cleanUp();
   }
 
@@ -141,11 +158,18 @@ class _IpcConnection {
   final BrowserRequestHandler _handler;
   final String? _expectedToken;
   final Logger _log;
+  final void Function()? onPing;
 
   bool _tokenVerified;
   final _buf = StringBuffer();
 
-  _IpcConnection(this._socket, this._handler, this._expectedToken, this._log)
+  _IpcConnection(
+    this._socket,
+    this._handler,
+    this._expectedToken,
+    this._log, {
+    this.onPing,
+  })
     // Unix socket connections have no token; TCP connections must send one.
     : _tokenVerified = _expectedToken == null;
 
@@ -223,6 +247,8 @@ class _IpcConnection {
       );
       return;
     }
+
+    if (msg is BrowserPingMsg) onPing?.call();
 
     try {
       final response = await _handler.handle(msg);

@@ -25,6 +25,7 @@ import '../services/separation/model_manager.dart';
 import '../services/separation/runtime_manager.dart';
 import '../services/separation/separation_engine.dart';
 import '../services/provisioning/dependency_provisioner.dart';
+import '../services/browser_extension/native_host_service.dart';
 import '../services/storage/storage_service.dart';
 
 // ── Core infrastructure ─────────────────────────────────────────────────────
@@ -51,6 +52,10 @@ final ffmpegServiceProvider = Provider<FfmpegService>((ref) {
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService();
+});
+
+final nativeHostServiceProvider = Provider<NativeHostService>((ref) {
+  return NativeHostService();
 });
 
 /// Total bytes used by the downloads directory. Refreshes once per load.

@@ -1,106 +1,219 @@
-# CreatorForge — Native Messaging Host registration (called by the Inno Setup installer)
-# This is NOT the same as native-host/scripts/install_windows.ps1 (which is for
-# developer/source installs). This script is called post-install and assumes that
-# creator_forge_host.py is already copied to %APPDATA%\CreatorForge\NativeHost\.
+# CreatorForge — Native Messaging Host installer (called by Inno Setup)
 #
-# When called by Inno Setup [Run] with no arguments:
-#   - Finds Python and writes a bat wrapper so the host is executable.
-#   - Does NOT write a manifest or touch the registry (no extension ID is known yet).
-#   - The user must run this script again (or native-host\scripts\install_windows.ps1)
-#     with their extension ID once the browser extension is loaded.
+# This is called by the Inno Setup [Run] entry immediately after installation.
+# It locates the native-host executable (prefer the compiled .exe; fall back to
+# the bat wrapper if Python is found) and writes the NM manifest + Chrome/Edge
+# registry keys so the browser can find the host.
 #
-# When called manually with an extension ID:
-#   install_native_host.ps1 abcdefghijklmnopabcdefghijklmnop
-#   - Validates the ID, writes the manifest, and registers Chrome + Edge.
+# USAGE
+#   install_native_host.ps1 [-ExtensionId <id>] [-Validate] [-Unregister]
 #
-# Security: never writes allowed_origins with an empty or wildcard value.
+#   (no args)         — Install host files and register with a PLACEHOLDER origin.
+#                       The placeholder prevents Chrome from crashing the host
+#                       lookup.  The in-app wizard replaces it with the real ID.
+#   -ExtensionId <id> — Register with the specific 32-char extension ID.
+#   -Validate         — Print the installed manifest + registry values and exit.
+#   -Unregister       — Remove Chrome + Edge registry keys (used by uninstaller).
+#
+# SECURITY
+#   - Writes to HKCU only — no administrator rights required.
+#   - never_origins is never empty; a placeholder is used when no real ID is
+#     known so the host is discoverable but cannot be misused.
+#   - Uses reg.exe /ve to set the unnamed default registry value (what Chrome reads).
+#   - Reads back and verifies the registry value after writing.
 
 param(
-    [string]$ExtensionId = ""
+    [string]$ExtensionId  = "",
+    [switch]$Validate,
+    [switch]$Unregister
 )
 
 $ErrorActionPreference = "Stop"
-$HostName = "com.creatorforge.native_host"
-$InstallDir = Join-Path $env:APPDATA "CreatorForge\NativeHost"
-$HostScriptDst = Join-Path $InstallDir "creator_forge_host.py"
-$WrapperBat = Join-Path $InstallDir "creator_forge_host.bat"
-$ManifestDst = Join-Path $InstallDir "com.creatorforge.native_host.json"
+
+$HostName    = "com.creatorforge.native_host"
+$AppDir      = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$NHDir       = Join-Path $env:APPDATA "CreatorForge\NativeHost"
+$ExePath     = Join-Path $AppDir "NativeHost\creator_forge_native_host.exe"
+$ScriptDst   = Join-Path $NHDir "creator_forge_host.py"
+$WrapperBat  = Join-Path $NHDir "creator_forge_host.bat"
+$ManifestDst = Join-Path $NHDir "$HostName.json"
+
+$Browsers = @(
+    @{ Name = "Chrome"; Key = "HKCU\Software\Google\Chrome\NativeMessagingHosts\$HostName" },
+    @{ Name = "Edge";   Key = "HKCU\Software\Microsoft\Edge\NativeMessagingHosts\$HostName" }
+)
+
+# ── Validate mode ──────────────────────────────────────────────────────────────
+
+if ($Validate) {
+    foreach ($b in $Browsers) {
+        Write-Host "=== $($b.Name) : $($b.Key) ==="
+        $out = & reg query $b.Key /ve 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host $out
+            $mpath = ($out | Select-String 'REG_SZ\s+(.+)$' -AllMatches).Matches[0]?.Groups[1]?.Value?.Trim()
+            if ($mpath -and (Test-Path $mpath)) {
+                Write-Host "Manifest contents:"
+                Get-Content $mpath
+            } else {
+                Write-Host "  WARNING: Manifest not found at: $mpath"
+            }
+        } else {
+            Write-Host "  Not registered."
+        }
+    }
+    Write-Host ""
+    Write-Host "Host executable (preferred): $ExePath  $(if (Test-Path $ExePath) { '[FOUND]' } else { '[NOT FOUND]' })"
+    Write-Host "Host bat wrapper (fallback): $WrapperBat  $(if (Test-Path $WrapperBat) { '[FOUND]' } else { '[NOT FOUND]' })"
+    exit 0
+}
+
+# ── Unregister mode ────────────────────────────────────────────────────────────
+
+if ($Unregister) {
+    foreach ($b in $Browsers) {
+        & reg delete $b.Key /f 2>&1 | Out-Null
+        Write-Host "Removed registry key: $($b.Key)"
+    }
+    exit 0
+}
+
+# ── Validate extension ID format (if provided) ────────────────────────────────
 
 function Assert-ExtensionId {
     param([string]$Id)
     if ($Id.Length -ne 32) {
-        Write-Error "Extension ID must be exactly 32 characters (got $($Id.Length))."
-        exit 1
+        throw "Extension ID must be exactly 32 characters (got $($Id.Length))."
     }
     if ($Id -notmatch '^[a-z]{32}$') {
-        Write-Error "Extension ID must contain only lowercase letters a-z (got '$Id')."
-        exit 1
+        throw "Extension ID must contain only lowercase letters a-z (got '$Id')."
     }
 }
 
-# ── Phase 1: create bat wrapper ───────────────────────────────────────────────
-# This runs at install time (no ID known yet). It only creates the wrapper bat
-# so the host is executable; it does NOT register Chrome or Edge.
-
-$python = $null
-foreach ($candidate in @("python", "python3", "py")) {
-    try {
-        $ver = & $candidate --version 2>&1
-        if ($ver -match "Python 3") {
-            $python = (Get-Command $candidate).Source
-            break
-        }
-    } catch {}
+if ($ExtensionId -ne "") {
+    Assert-ExtensionId -Id $ExtensionId
 }
 
-if (-not $python) {
-    Write-Host "Python 3 not found. Browser extension integration will be unavailable."
-    Write-Host "After installing Python, run:"
-    Write-Host "  `"$PSCommandPath`" <ExtensionId>"
-    exit 0
-}
+# ── Determine host executable path ────────────────────────────────────────────
 
-New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-@"
+$HostExec = $null
+
+# Prefer compiled exe shipped with the installer.
+if (Test-Path $ExePath) {
+    $HostExec = $ExePath
+    Write-Host "Using compiled host: $HostExec"
+} else {
+    # Fall back: generate a bat wrapper using the user's Python.
+    $python = $null
+    foreach ($candidate in @("python", "python3", "py")) {
+        try {
+            $ver = & $candidate --version 2>&1
+            if ($ver -match "Python 3") {
+                $python = (Get-Command $candidate -ErrorAction SilentlyContinue)?.Source
+                break
+            }
+        } catch {}
+    }
+
+    if ($python) {
+        New-Item -ItemType Directory -Force -Path $NHDir | Out-Null
+        @"
 @echo off
-"$python" "$HostScriptDst" %*
+"$python" "$ScriptDst" %*
 "@ | Set-Content -Path $WrapperBat -Encoding ASCII
-
-Write-Host "Native host wrapper created: $WrapperBat"
-
-# ── Phase 2: register with extension ID ──────────────────────────────────────
-# Only runs when an extension ID is provided (either directly by the user,
-# or by the full install script in native-host/scripts/install_windows.ps1).
-
-if ($ExtensionId -eq "") {
-    Write-Host ""
-    Write-Host "No extension ID provided — skipping manifest and registry registration."
-    Write-Host "After loading the Chrome extension, run:"
-    Write-Host "  `"$PSCommandPath`" <ExtensionId>"
-    Write-Host ""
-    Write-Host "Or use the full registration script:"
-    Write-Host "  native-host\scripts\install_windows.ps1 <ExtensionId>"
-    exit 0
+        $HostExec = $WrapperBat
+        Write-Host "Using Python bat wrapper: $WrapperBat"
+    } else {
+        Write-Host "WARNING: Neither creator_forge_native_host.exe nor Python 3 was found."
+        Write-Host "Browser extension integration will not be available until one is installed."
+        Write-Host "The in-app Browser Integration wizard will guide you through setup."
+        exit 0
+    }
 }
 
-Assert-ExtensionId -Id $ExtensionId
+# ── Ensure NativeHost directory exists ────────────────────────────────────────
 
-$origin = "chrome-extension://$ExtensionId/"
+New-Item -ItemType Directory -Force -Path $NHDir | Out-Null
 
-$manifest = @{
+# ── Determine origin ──────────────────────────────────────────────────────────
+
+# If no extension ID is supplied, use a placeholder origin so the manifest is
+# syntactically valid and the host is discoverable.  The in-app wizard will
+# call this script again (or use reg.exe directly) with the real ID.
+$origin = if ($ExtensionId -ne "") {
+    "chrome-extension://$ExtensionId/"
+} else {
+    "chrome-extension://creatorforge-placeholder-replace-me-aaa/"
+}
+
+# ── Write manifest ────────────────────────────────────────────────────────────
+
+$manifest = [ordered]@{
     name            = $HostName
     description     = "CreatorForge Native Messaging Host"
-    path            = $WrapperBat
+    path            = $HostExec
     type            = "stdio"
     allowed_origins = @($origin)
 }
-$manifest | ConvertTo-Json -Depth 5 | Set-Content -Path $ManifestDst -Encoding UTF8
+$json = $manifest | ConvertTo-Json -Depth 5
+[System.IO.File]::WriteAllText($ManifestDst, $json, [System.Text.Encoding]::UTF8)
+Write-Host "Manifest written: $ManifestDst"
 
-foreach ($browser in @("Google\Chrome", "Microsoft\Edge")) {
-    $key = "HKCU:\Software\$browser\NativeMessagingHosts\$HostName"
-    New-Item -Path $key -Force | Out-Null
-    Set-ItemProperty -Path $key -Name "(Default)" -Value $ManifestDst
+# ── Register with Chrome + Edge using reg.exe /ve ─────────────────────────────
+# /ve sets the unnamed default value — the value Chrome reads.
+# /t REG_SZ — string type.
+# /f — overwrite without prompting.
+
+$anyFailed = $false
+foreach ($b in $Browsers) {
+    $exitCode = 0
+    $output = & reg add $b.Key /ve /t REG_SZ /d $ManifestDst /f 2>&1
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -eq 0) {
+        Write-Host "Registered $($b.Name): $($b.Key)"
+    } else {
+        Write-Host "WARNING: Failed to register $($b.Name): $output"
+        $anyFailed = $true
+    }
 }
 
-Write-Host "Registered native host for extension ID: $ExtensionId"
-Write-Host "Manifest: $ManifestDst"
+# ── Read-back verification ────────────────────────────────────────────────────
+
+Write-Host ""
+Write-Host "Verifying registration…"
+$allOk = $true
+foreach ($b in $Browsers) {
+    $out = & reg query $b.Key /ve 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  FAIL  $($b.Name): registry key not found."
+        $allOk = $false
+        continue
+    }
+    $mpath = ($out | Select-String 'REG_SZ\s+(.+)' -AllMatches).Matches[0]?.Groups[1]?.Value?.Trim()
+    if ($mpath -ne $ManifestDst) {
+        Write-Host "  FAIL  $($b.Name): registry value mismatch. Expected: $ManifestDst  Got: $mpath"
+        $allOk = $false
+        continue
+    }
+    if (-not (Test-Path $ManifestDst)) {
+        Write-Host "  FAIL  $($b.Name): manifest file not found at $ManifestDst"
+        $allOk = $false
+        continue
+    }
+    Write-Host "  OK    $($b.Name)"
+}
+
+if (-not $allOk -or $anyFailed) {
+    Write-Host ""
+    Write-Host "One or more verifications failed.  The in-app wizard will attempt"
+    Write-Host "to repair the registration automatically."
+    exit 1
+}
+
+Write-Host ""
+if ($ExtensionId -ne "") {
+    Write-Host "Native host registered for extension ID: $ExtensionId"
+} else {
+    Write-Host "Native host registered with placeholder origin."
+    Write-Host "Open CreatorForge → Browser Integration to complete setup."
+}

@@ -47,6 +47,21 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Native host – install PyInstaller
+        run: pip install pyinstaller==6.11.1
+
+      - name: Native host – build exe
+        working-directory: native-host
+        run: |
+          pyinstaller build_windows.spec --noconfirm --distpath dist
+          if (-not (Test-Path "dist\creator_forge_native_host.exe")) {
+            Write-Error "PyInstaller did not produce creator_forge_native_host.exe"
+            exit 1
+          }
+          $size = (Get-Item "dist\creator_forge_native_host.exe").Length
+          Write-Host "Native host exe: $([math]::Round($size/1MB, 1)) MB"
+        shell: pwsh
+
       - name: Native host – unit tests
         run: python native-host\test_native_host.py
 
@@ -56,6 +71,15 @@ jobs:
       # ── Windows release build ─────────────────────────────────────────────────
       - name: Windows release build
         run: flutter build windows --release
+
+      # Copy native-host exe into the release dir so the installer can find it.
+      - name: Copy native-host exe into release tree
+        shell: pwsh
+        run: |
+          $nhDest = "build\windows\x64\runner\Release\NativeHost"
+          New-Item -ItemType Directory -Force -Path $nhDest | Out-Null
+          Copy-Item "native-host\dist\creator_forge_native_host.exe" $nhDest -Force
+          Write-Host "Copied native host exe to $nhDest"
 
       - name: Verify build output
         shell: pwsh
@@ -71,6 +95,10 @@ jobs:
           }
           if (-not (Test-Path "$releaseDir\data\flutter_assets")) {
             Write-Error "flutter_assets directory not found"
+            exit 1
+          }
+          if (-not (Test-Path "$releaseDir\NativeHost\creator_forge_native_host.exe")) {
+            Write-Error "Native host exe not found in $releaseDir\NativeHost\"
             exit 1
           }
           Write-Host "Build output verified."

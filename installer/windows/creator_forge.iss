@@ -15,14 +15,20 @@
 ;   1. Copies the Flutter executable and all DLLs (no duplicate entries).
 ;   2. Copies flutter_assets (data\flutter_assets) which includes the Python
 ;      worker scripts bundled by Flutter.
-;   3. Copies the native messaging host Python script + PowerShell helper scripts.
-;   4. Runs install_native_host.ps1 post-install to:
-;        a. Find Python, create a bat wrapper.
-;        b. Write the NM manifest (empty allowed_origins — user must re-run
-;           with extension ID).
-;        c. Register Chrome + Edge HKCU registry keys.
-;   5. Creates Start Menu shortcut and optional desktop shortcut.
-;   6. On uninstall: runs uninstall_native_host.ps1 then removes all files.
+;   3. Copies the compiled native-host exe to {app}\NativeHost\ (if built by CI).
+;   4. Copies the browser-extension/dist/ directory to {app}\browser-extension\dist\.
+;   5. Copies the Python host script + PowerShell helper scripts.
+;   6. Runs install_native_host.ps1 post-install to:
+;        a. Prefer the compiled exe; fall back to bat wrapper if Python found.
+;        b. Write the NM manifest with a placeholder origin.
+;        c. Register Chrome + Edge HKCU registry keys using reg.exe /ve.
+;        d. Read back and verify the registry values.
+;   7. Creates Start Menu shortcut and optional desktop shortcut.
+;   8. On uninstall: runs uninstall_native_host.ps1 then removes all files.
+;
+;   The user completes browser setup by opening CreatorForge → Browser
+;   Integration, which detects the browser, guides extension loading, and
+;   updates the registry with the real extension ID automatically.
 ;
 ; ── NOT bundled (user must install separately) ────────────────────────────────
 ;   - Python 3.10+ interpreter (required for AI features + native host)
@@ -44,6 +50,7 @@
 ; Paths are relative to the location of this .iss file.
 #define BuildDir    "..\..\build\windows\x64\runner\Release"
 #define NativeHost  "..\..\native-host"
+#define ExtDist     "..\..\browser-extension\dist"
 #define Scripts     "scripts"
 
 [Setup]
@@ -93,7 +100,21 @@ Source: "{#BuildDir}\*.dll";           DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\data\*";          DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; ── Native messaging host ─────────────────────────────────────────────────────
+; Python script (always bundled for transparency / source reference).
 Source: "{#NativeHost}\creator_forge_host.py"; DestDir: "{userappdata}\CreatorForge\NativeHost"; Flags: ignoreversion
+
+; Compiled exe (preferred host; produced by the CI PyInstaller build step and
+; copied into the release tree by the CI "Copy native-host exe" step).
+; skipifsourcedoesntexist allows local developer builds without PyInstaller.
+Source: "{#BuildDir}\NativeHost\creator_forge_native_host.exe"; \
+  DestDir: "{app}\NativeHost"; \
+  Flags: ignoreversion skipifsourcedoesntexist
+
+; ── Browser extension ─────────────────────────────────────────────────────────
+; Built extension files so the in-app wizard can open Explorer to the dist/
+; folder and guide the user through Load unpacked without needing the source tree.
+Source: "{#ExtDist}\*"; DestDir: "{app}\browser-extension\dist"; \
+  Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; ── Post-install helper scripts ───────────────────────────────────────────────
 ; These are copied to {app}\scripts so [Run]/[UninstallRun] can find them.
