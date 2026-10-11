@@ -1,3 +1,4 @@
+// ignore_for_file: prefer_initializing_formals
 import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
@@ -35,7 +36,6 @@ class SegmentedHttpEngine implements DownloadEngine {
   int _activeCount = 0;
   bool _disposed = false;
 
-  // ignore: prefer_initializing_formals
   SegmentedHttpEngine({
     required DownloadHistoryRepository historyRepo,
     this.maxConcurrent = 3,
