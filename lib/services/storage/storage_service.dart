@@ -11,11 +11,31 @@ class StorageService {
     try {
       FileStat.statSync(directory);
       // dart:io doesn't expose free disk space directly on all platforms;
-      // platform channel integration is deferred to Phase 8.
+      // platform channel integration is deferred to a future phase.
       return -1;
     } catch (e) {
       _log.warning('Could not get available bytes.', e);
       return -1;
+    }
+  }
+
+  /// Returns the total size in bytes of all files inside [directory].
+  Future<int> getDirectorySize(String directory) async {
+    try {
+      final dir = Directory(directory);
+      if (!await dir.exists()) return 0;
+      var size = 0;
+      await for (final entity in dir.list(recursive: true)) {
+        if (entity is File) {
+          try {
+            size += await entity.length();
+          } catch (_) {}
+        }
+      }
+      return size;
+    } catch (e) {
+      _log.warning('Could not measure directory size: $directory', e);
+      return 0;
     }
   }
 

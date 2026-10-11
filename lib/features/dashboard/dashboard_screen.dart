@@ -20,6 +20,7 @@ class DashboardScreen extends ConsumerWidget {
     final separationJobs = ref.watch(separationJobsProvider).valueOrNull ?? [];
     final bgJobs = ref.watch(bgRemovalJobsProvider).valueOrNull ?? [];
     final audioJobs = ref.watch(audioJobsProvider).valueOrNull ?? [];
+    final dirSizeBytes = ref.watch(downloadsDirSizeProvider).valueOrNull;
 
     final totalDownloads = downloads
         .where((t) => t.status == DownloadStatus.completed)
@@ -47,7 +48,7 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             _buildHeader(),
             const SizedBox(height: 24),
-            _buildStatsRow(totalDownloads, activeDownloads, activeProcessing),
+            _buildStatsRow(totalDownloads, activeDownloads, activeProcessing, dirSizeBytes),
             const SizedBox(height: 28),
             _buildQuickActions(context),
             const SizedBox(height: 28),
@@ -83,10 +84,27 @@ class DashboardScreen extends ConsumerWidget {
         .slideY(begin: -0.05, end: 0);
   }
 
+  static String _formatBytes(int? bytes) {
+    if (bytes == null) return '…';
+    if (bytes == 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var value = bytes.toDouble();
+    var unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex++;
+    }
+    final formatted = value < 10
+        ? value.toStringAsFixed(1)
+        : value.toStringAsFixed(0);
+    return '$formatted ${units[unitIndex]}';
+  }
+
   Widget _buildStatsRow(
     int totalDownloads,
     int activeDownloads,
     int activeProcessing,
+    int? dirSizeBytes,
   ) {
     return Row(
           children: [
@@ -117,10 +135,10 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: StatCard(
                 label: 'Storage Used',
-                value: '—',
+                value: _formatBytes(dirSizeBytes),
                 icon: Icons.folder_outlined,
                 iconColor: AppColors.secondary,
               ),

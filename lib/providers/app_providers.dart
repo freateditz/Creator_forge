@@ -53,6 +53,14 @@ final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService();
 });
 
+/// Total bytes used by the downloads directory. Refreshes once per load.
+final downloadsDirSizeProvider = FutureProvider.autoDispose<int>((ref) async {
+  final storage = ref.read(storageServiceProvider);
+  final settings = ref.watch(appSettingsProvider).valueOrNull;
+  if (settings == null) return 0;
+  return storage.getDirectorySize(settings.defaultDownloadsDir);
+});
+
 final metadataResolverProvider = Provider<MetadataResolver>((ref) {
   return MetadataResolver();
 });
