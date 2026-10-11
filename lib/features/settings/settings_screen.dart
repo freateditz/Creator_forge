@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -142,15 +144,24 @@ class SettingsScreen extends ConsumerWidget {
                   _SettingsSection(
                     title: 'Dependencies',
                     children: [
-                      _DependencyTile(
+                      _ProvisionableTile(
                         label: 'FFmpeg',
                         versionAsync: ffmpegVersion,
                         icon: Icons.settings_applications_outlined,
+                        provisioningProvider: ffmpegProvisioningProvider,
+                        supportsAutoInstall: Platform.isWindows,
+                        installHint: Platform.isWindows
+                            ? null
+                            : 'Install via: brew install ffmpeg',
                       ),
-                      _DependencyTile(
+                      _ProvisionableTile(
                         label: 'yt-dlp',
                         versionAsync: ytdlpVersion,
                         icon: Icons.download_for_offline_outlined,
+                        provisioningProvider: ytdlpProvisioningProvider,
+                        supportsAutoInstall:
+                            Platform.isWindows || Platform.isMacOS,
+                        installHint: null,
                       ),
                     ],
                   ),
@@ -455,47 +466,136 @@ class _DropdownTile<T> extends StatelessWidget {
   }
 }
 
-class _DependencyTile extends StatelessWidget {
+class _ProvisionableTile extends ConsumerWidget {
   final String label;
   final AsyncValue<String?> versionAsync;
   final IconData icon;
+  final NotifierProvider<dynamic, ProvisioningState> provisioningProvider;
+  final bool supportsAutoInstall;
+  final String? installHint;
 
-  const _DependencyTile({
+  const _ProvisionableTile({
     required this.label,
     required this.versionAsync,
     required this.icon,
+    required this.provisioningProvider,
+    required this.supportsAutoInstall,
+    this.installHint,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final (text, color) = versionAsync.when(
-      loading: () => ('Checking…', null),
-      error: (_, _) => ('Not found', AppColors.error),
-      data: (v) => v != null
-          ? ('v$v — installed', AppColors.success)
-          : ('Not found', AppColors.error),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final provisioning = ref.watch(provisioningProvider);
+    final isInstalled = versionAsync.valueOrNull != null;
+
+    final statusColor = versionAsync.when(
+      loading: () => null,
+      error: (_, _) => AppColors.error,
+      data: (v) => v != null ? AppColors.success : AppColors.error,
+    );
+    final statusText = versionAsync.when(
+      loading: () => 'Checking…',
+      error: (_, _) => 'Not found',
+      data: (v) => v != null ? 'v$v — installed' : 'Not found',
     );
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: AppColors.textMedium),
-          const SizedBox(width: 12),
-          Expanded(child: Text(label, style: AppTextStyles.bodyMedium)),
-          if (color != null)
-            Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-          Text(
-            text,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: color ?? AppColors.textMedium,
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 18, color: AppColors.textMedium),
+              const SizedBox(width: 12),
+              Expanded(child: Text(label, style: AppTextStyles.bodyMedium)),
+              if (statusColor != null)
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              Text(
+                statusText,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: statusColor ?? AppColors.textMedium,
+                ),
+              ),
+              if (!isInstalled &&
+                  supportsAutoInstall &&
+                  provisioning.status == ProvisioningStatus.idle) ...[
+                const SizedBox(width: 10),
+                OutlinedButton(
+                  onPressed: () =>
+                      ref.read(provisioningProvider.notifier).provision(),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    minimumSize: Size.zero,
+                  ),
+                  child: Text(
+                    'Auto-install',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ],
+              if (provisioning.status == ProvisioningStatus.done &&
+                  !isInstalled) ...[
+                const SizedBox(width: 10),
+                Text(
+                  'Installed — restart may be required',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.success,
+                  ),
+                ),
+              ],
+            ],
           ),
+          if (provisioning.status == ProvisioningStatus.downloading) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: provisioning.progress > 0 ? provisioning.progress : null,
+                minHeight: 4,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              provisioning.progress > 0
+                  ? 'Downloading… ${(provisioning.progress * 100).toStringAsFixed(0)}%'
+                  : 'Downloading…',
+              style: AppTextStyles.caption,
+            ),
+          ],
+          if (provisioning.status == ProvisioningStatus.error &&
+              provisioning.errorMessage != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Failed: ${provisioning.errorMessage}',
+              style: AppTextStyles.caption.copyWith(color: AppColors.error),
+            ),
+            const SizedBox(height: 4),
+            GestureDetector(
+              onTap: () => ref.read(provisioningProvider.notifier).reset(),
+              child: Text(
+                'Dismiss',
+                style: AppTextStyles.caption.copyWith(color: AppColors.primary),
+              ),
+            ),
+          ],
+          if (!isInstalled && !supportsAutoInstall && installHint != null) ...[
+            const SizedBox(height: 4),
+            Text(installHint!, style: AppTextStyles.caption),
+          ],
         ],
       ),
     );
