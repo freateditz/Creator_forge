@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,11 +24,24 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   void initState() {
     super.initState();
-    // Kick off lightweight browser health check after the first frame so it
-    // never blocks the UI build. initialize() is a no-op after the first call.
+    // Kick off lightweight browser health check and auto-provisioning after the first frame
+    // so it never blocks the UI build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(browserIntegrationProvider.notifier).initialize();
+      _autoProvisionDependencies();
     });
+  }
+
+  Future<void> _autoProvisionDependencies() async {
+    try {
+      final provisioner = ref.read(dependencyProvisionerProvider);
+      if (!provisioner.isYtDlpProvisioned) {
+        await ref.read(ytdlpProvisioningProvider.notifier).provision();
+      }
+      if (Platform.isWindows && !provisioner.isFfmpegProvisioned) {
+        await ref.read(ffmpegProvisioningProvider.notifier).provision();
+      }
+    } catch (_) {}
   }
 
   @override

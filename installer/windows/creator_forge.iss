@@ -74,6 +74,10 @@ OutputBaseFilename=CreatorForge-{#AppVersion}-Setup
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
+CloseApplications=yes
+CloseApplicationsFilter=*.exe
+RestartApplications=yes
+UsePreviousAppDir=yes
 ; Uninstaller metadata.
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}
