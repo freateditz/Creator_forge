@@ -44,6 +44,15 @@ class FfmpegServiceImpl implements FfmpegService {
   static final List<String> _candidates = _buildCandidates();
 
   static List<String> _buildCandidates() {
+    String? bundledExe;
+    try {
+      bundledExe = p.join(
+        p.dirname(Platform.resolvedExecutable),
+        'bin',
+        'ffmpeg.exe',
+      );
+    } catch (_) {}
+
     // Managed bin dir first so auto-provisioned exe takes priority.
     final managedExe = Platform.isWindows
         ? p.join(AppConfig.instance.binDir, 'ffmpeg.exe')
@@ -51,6 +60,7 @@ class FfmpegServiceImpl implements FfmpegService {
 
     final home = Platform.environment['HOME'] ?? '';
     final c = <String>[
+      ?bundledExe,
       managedExe,
       'ffmpeg',
       if (home.isNotEmpty) p.join(home, '.local', 'bin', 'ffmpeg'),

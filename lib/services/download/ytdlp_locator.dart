@@ -14,13 +14,23 @@ class YtDlpLocator {
   String? _resolvedPath;
 
   List<String> get _candidates {
-    // Managed bin dir is checked first so auto-provisioned exe takes priority.
+    String? bundledExe;
+    try {
+      bundledExe = p.join(
+        p.dirname(Platform.resolvedExecutable),
+        'bin',
+        Platform.isWindows ? 'yt-dlp.exe' : 'yt-dlp',
+      );
+    } catch (_) {}
+
+    // Managed bin dir first so auto-provisioned exe takes priority.
     final managedExe = Platform.isWindows
         ? p.join(AppConfig.instance.binDir, 'yt-dlp.exe')
         : p.join(AppConfig.instance.binDir, 'yt-dlp');
 
     final home = Platform.environment['HOME'] ?? '';
     final candidates = <String>[
+      ?bundledExe,
       managedExe,
       'yt-dlp',
       if (home.isNotEmpty) p.join(home, '.local', 'bin', 'yt-dlp'),

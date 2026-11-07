@@ -114,6 +114,10 @@ Source: "{#BuildDir}\NativeHost\creator_forge_native_host.exe"; \
   DestDir: "{app}\NativeHost"; \
   Flags: ignoreversion skipifsourcedoesntexist
 
+; ── Bundled binaries (FFmpeg, ffprobe, yt-dlp) ─────────────────────────────────
+Source: "{#BuildDir}\bin\*"; DestDir: "{app}\bin"; \
+  Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+
 ; ── Browser extension ─────────────────────────────────────────────────────────
 ; Built extension files so the in-app wizard can open Explorer to the dist/
 ; folder and guide the user through Load unpacked without needing the source tree.
