@@ -150,6 +150,40 @@ class MediaInfo {
     ];
   }
 
+  List<QualityOption> get videoQualityOptions {
+    final heights = availableVideoHeights;
+    const standardHeights = [2160, 1440, 1080, 720, 480, 360];
+    return [
+      QualityOption.best,
+      for (final h in standardHeights)
+        QualityOption.forHeight(
+          h,
+          available: heights.any((avail) => avail >= h),
+        ),
+    ];
+  }
+
+  List<QualityOption> get videoOnlyQualityOptions {
+    final heights = availableVideoHeights;
+    const standardHeights = [2160, 1440, 1080, 720, 480, 360];
+    return [
+      QualityOption.bestVideoOnly,
+      for (final h in standardHeights)
+        QualityOption.forHeightVideoOnly(
+          h,
+          available: heights.any((avail) => avail >= h),
+        ),
+    ];
+  }
+
+  List<QualityOption> get audioQualityOptions => [
+    QualityOption.audioBest,
+    QualityOption.audioMp3_320,
+    QualityOption.audioMp3_192,
+    QualityOption.audioMp3_128,
+    QualityOption.audioM4a,
+  ];
+
   factory MediaInfo.fromJson(Map<String, dynamic> json, {required String url}) {
     final rawFormats = json['formats'] as List<dynamic>? ?? [];
     final formats = rawFormats
@@ -213,10 +247,46 @@ class QualityOption {
         'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best',
   );
 
+  static const bestVideoOnly = QualityOption._(
+    preset: QualityPreset.best,
+    label: 'Best available (video only)',
+    formatSelector: 'bestvideo[ext=mp4]/bestvideo/best',
+  );
+
   static const audioOnly = QualityOption._(
     preset: QualityPreset.audioOnly,
     label: 'Audio only',
-    formatSelector: 'bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio',
+    formatSelector: 'bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio/best',
+  );
+
+  static const audioBest = QualityOption._(
+    preset: QualityPreset.audioOnly,
+    label: 'Best Audio (Original)',
+    formatSelector: 'bestaudio/best',
+  );
+
+  static const audioMp3_320 = QualityOption._(
+    preset: QualityPreset.audioOnly,
+    label: 'MP3 - 320 kbps (High)',
+    formatSelector: 'bestaudio/best',
+  );
+
+  static const audioMp3_192 = QualityOption._(
+    preset: QualityPreset.audioOnly,
+    label: 'MP3 - 192 kbps (Standard)',
+    formatSelector: 'bestaudio/best',
+  );
+
+  static const audioMp3_128 = QualityOption._(
+    preset: QualityPreset.audioOnly,
+    label: 'MP3 - 128 kbps (Compact)',
+    formatSelector: 'bestaudio/best',
+  );
+
+  static const audioM4a = QualityOption._(
+    preset: QualityPreset.audioOnly,
+    label: 'M4A / AAC',
+    formatSelector: 'bestaudio[ext=m4a]/bestaudio/best',
   );
 
   static QualityOption forHeight(int height, {bool available = true}) {
@@ -247,6 +317,47 @@ class QualityOption {
     );
   }
 
+  static QualityOption forHeightVideoOnly(int height, {bool available = true}) {
+    const labels = {
+      2160: '2160p (4K)',
+      1440: '1440p (2K)',
+      1080: '1080p',
+      720: '720p',
+      480: '480p',
+      360: '360p',
+    };
+    const presets = {
+      2160: QualityPreset.q2160p,
+      1440: QualityPreset.q1440p,
+      1080: QualityPreset.q1080p,
+      720: QualityPreset.q720p,
+      480: QualityPreset.q480p,
+      360: QualityPreset.q360p,
+    };
+    return QualityOption._(
+      preset: presets[height] ?? QualityPreset.best,
+      label: labels[height] ?? '${height}p',
+      formatSelector:
+          'bestvideo[height<=$height][ext=mp4]/'
+          'bestvideo[height<=$height]/'
+          'best[height<=$height]',
+      available: available,
+    );
+  }
+
+  String get videoOnlyFormatSelector {
+    if (preset == QualityPreset.audioOnly) return 'bestvideo/best';
+    if (formatSelector.contains('+')) {
+      final parts = formatSelector.split('/');
+      final videoOnlyParts = parts.map((part) {
+        if (part.contains('+')) return part.split('+').first;
+        return part;
+      });
+      return videoOnlyParts.join('/');
+    }
+    return formatSelector;
+  }
+
   String get audioFormatSelector =>
-      'bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio';
+      'bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio/best';
 }

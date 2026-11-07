@@ -29,6 +29,7 @@ const emptyState = $<HTMLElement>("empty-state");
 const refreshBtn = $<HTMLButtonElement>("refresh-btn");
 const clearBtn = $<HTMLButtonElement>("clear-btn");
 const setupLink = $<HTMLAnchorElement>("setup-link");
+const reconnectBtn = $<HTMLButtonElement>("reconnect-btn");
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,10 @@ function renderConnection(state: ConnectionState): void {
     connected: "Connected",
     error: "Connection error",
   }[state];
+
+  if (reconnectBtn) {
+    reconnectBtn.style.display = state === "connected" ? "none" : "inline-block";
+  }
 }
 
 function renderCandidates(items: MediaCandidate[]): void {
@@ -113,6 +118,27 @@ function buildCandidateCard(c: MediaCandidate): HTMLElement {
   header.appendChild(info);
   card.appendChild(header);
 
+  // ── Download mode selector ──
+  const modeRow = document.createElement("div");
+  modeRow.className = "format-row";
+  const modeSelect = document.createElement("select");
+  modeSelect.id = `mode-${c.id}`;
+  [
+    { value: "videoAndAudio", label: "🎬 Video + Audio (Full with sound)" },
+    { value: "videoOnly", label: "📹 Video only (silent stream)" },
+    { value: "audioOnly", label: "🎵 Audio only (MP3 / track)" },
+  ].forEach((m) => {
+    const opt = document.createElement("option");
+    opt.value = m.value;
+    opt.textContent = m.label;
+    if (c.elementType === "audio" && m.value === "audioOnly") {
+      opt.selected = true;
+    }
+    modeSelect.appendChild(opt);
+  });
+  modeRow.appendChild(modeSelect);
+  card.appendChild(modeRow);
+
   // ── Format selector (shown after analysis) ──
   if (analysis?.formats && analysis.formats.length > 0 && !analysis.isDirectDownload) {
     const formatRow = document.createElement("div");
@@ -120,6 +146,11 @@ function buildCandidateCard(c: MediaCandidate): HTMLElement {
 
     const select = document.createElement("select");
     select.id = `fmt-${c.id}`;
+    const bestOpt = document.createElement("option");
+    bestOpt.value = "";
+    bestOpt.textContent = "⭐ Best Available Quality";
+    select.appendChild(bestOpt);
+
     analysis.formats.forEach((f) => {
       const opt = document.createElement("option");
       opt.value = f.id;
@@ -134,9 +165,14 @@ function buildCandidateCard(c: MediaCandidate): HTMLElement {
   const actions = document.createElement("div");
   actions.className = "card-actions";
 
+  const hasValidTarget =
+    (c.url && !c.url.startsWith("blob:") && (c.url.startsWith("http://") || c.url.startsWith("https://"))) ||
+    Boolean(c.pageUrl && (c.pageUrl.startsWith("http://") || c.pageUrl.startsWith("https://")));
+
   const canDownload =
     c.downloadability !== "drm-protected" &&
     c.downloadability !== "unsupported" &&
+    hasValidTarget &&
     connectionState === "connected";
 
   if (!analysis && canDownload) {
@@ -153,9 +189,11 @@ function buildCandidateCard(c: MediaCandidate): HTMLElement {
     downloadBtn.disabled = isPending;
     downloadBtn.textContent = isPending ? "Sending…" : "Send to CreatorForge";
     downloadBtn.addEventListener("click", () => {
+      const modeSel = document.getElementById(`mode-${c.id}`) as HTMLSelectElement | null;
       const select = document.getElementById(`fmt-${c.id}`) as HTMLSelectElement | null;
+      const downloadType = (modeSel?.value || (c.elementType === "audio" ? "audioOnly" : "videoAndAudio")) as DownloadType;
       const fmt = select?.value || undefined;
-      onDownload(c, fmt);
+      onDownload(c, fmt, downloadType);
     });
     actions.appendChild(downloadBtn);
   }
@@ -167,10 +205,15 @@ function buildCandidateCard(c: MediaCandidate): HTMLElement {
     actions.appendChild(label);
   }
 
-  if (c.downloadability === "blob") {
+  if (c.downloadability === "blob" && !canDownload) {
     const label = document.createElement("span");
     label.className = "status-label status-info";
     label.textContent = "Blob URL — use page controls";
+    actions.appendChild(label);
+  } else if (c.downloadability === "blob" && canDownload) {
+    const label = document.createElement("span");
+    label.className = "status-label status-info";
+    label.textContent = "Stream (via page URL)";
     actions.appendChild(label);
   }
 
@@ -205,12 +248,13 @@ async function onAnalyze(c: MediaCandidate): Promise<void> {
   renderCandidates(candidates);
 }
 
-async function onDownload(c: MediaCandidate, formatSelector?: string): Promise<void> {
+async function onDownload(
+  c: MediaCandidate,
+  formatSelector?: string,
+  downloadType: DownloadType = "videoAndAudio"
+): Promise<void> {
   pendingDownloads.add(c.url);
   renderCandidates(candidates);
-
-  const downloadType: DownloadType =
-    c.elementType === "audio" ? "audioOnly" : "videoAndAudio";
 
   const result = await send({
     kind: "download",
@@ -326,6 +370,14 @@ async function init(): Promise<void> {
 
 refreshBtn.addEventListener("click", async () => {
   await send({ kind: "refresh-detection" } as PopupToBgMsg);
+});
+
+reconnectBtn?.addEventListener("click", async () => {
+  renderConnection("connecting");
+  const state = (await send({ kind: "reconnect" } as PopupToBgMsg)) as ConnectionState;
+  renderConnection(state);
+  const items = (await send({ kind: "get-candidates" } as PopupToBgMsg)) as MediaCandidate[];
+  renderCandidates(items ?? []);
 });
 
 clearBtn.addEventListener("click", async () => {

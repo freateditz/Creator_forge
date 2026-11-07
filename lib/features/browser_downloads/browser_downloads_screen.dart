@@ -994,6 +994,8 @@ class _LinkChip extends StatelessWidget {
             'url.dll,FileProtocolHandler',
             url,
           ], mode: ProcessStartMode.detached).ignore();
+        } else if (Platform.isMacOS) {
+          Process.start('open', [url], mode: ProcessStartMode.detached).ignore();
         }
       },
     );

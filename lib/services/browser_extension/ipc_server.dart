@@ -116,9 +116,42 @@ class IpcServer {
     conn.start();
   }
 
+  List<String> _getFallbackConnPaths() {
+    final list = <String>[];
+    if (Platform.isMacOS) {
+      final home = Platform.environment['HOME'] ?? '';
+      if (home.isNotEmpty) {
+        list.add(p.join(home, 'Library', 'Application Support', 'CreatorForge', 'ipc', 'creator_forge.conn'));
+        list.add(p.join(home, 'Library', 'Application Support', 'creator_forge', 'ipc', 'creator_forge.conn'));
+      }
+    } else if (Platform.isWindows) {
+      final appData = Platform.environment['APPDATA'] ?? '';
+      if (appData.isNotEmpty) {
+        list.add(p.join(appData, 'CreatorForge', 'ipc', 'creator_forge.conn'));
+        list.add(p.join(appData, 'creator_forge', 'ipc', 'creator_forge.conn'));
+      }
+    } else {
+      final home = Platform.environment['HOME'] ?? '';
+      if (home.isNotEmpty) {
+        list.add(p.join(home, '.local', 'share', 'CreatorForge', 'ipc', 'creator_forge.conn'));
+        list.add(p.join(home, '.local', 'share', 'creator_forge', 'ipc', 'creator_forge.conn'));
+      }
+    }
+    return list;
+  }
+
   void _writeConnFile(Map<String, Object> info) {
     try {
-      File(_connFilePath).writeAsStringSync(jsonEncode(info));
+      final jsonStr = jsonEncode(info);
+      File(_connFilePath).writeAsStringSync(jsonStr);
+
+      for (final fallback in _getFallbackConnPaths()) {
+        try {
+          final f = File(fallback);
+          f.parent.createSync(recursive: true);
+          f.writeAsStringSync(jsonStr);
+        } catch (_) {}
+      }
     } catch (e) {
       _log.warning('Failed to write IPC conn file.', e);
     }
@@ -134,7 +167,8 @@ class IpcServer {
   }
 
   void _cleanUp() {
-    for (final path in [_socketPath, _connFilePath]) {
+    final toDelete = [_socketPath, _connFilePath, ..._getFallbackConnPaths()];
+    for (final path in toDelete) {
       try {
         final f = File(path);
         if (f.existsSync()) f.deleteSync();

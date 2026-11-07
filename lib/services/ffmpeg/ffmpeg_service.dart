@@ -49,9 +49,11 @@ class FfmpegServiceImpl implements FfmpegService {
         ? p.join(AppConfig.instance.binDir, 'ffmpeg.exe')
         : p.join(AppConfig.instance.binDir, 'ffmpeg');
 
+    final home = Platform.environment['HOME'] ?? '';
     final c = <String>[
       managedExe,
       'ffmpeg',
+      if (home.isNotEmpty) p.join(home, '.local', 'bin', 'ffmpeg'),
       '/opt/homebrew/bin/ffmpeg',
       '/usr/local/bin/ffmpeg',
       '/usr/bin/ffmpeg',

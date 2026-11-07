@@ -98,12 +98,63 @@ def nm_error(request_id: str, error: str) -> None:
 
 # ── IPC connection file location ──────────────────────────────────────────────
 
-def _conn_file_path() -> str:
-    """Return the absolute path to the IPC connection descriptor file.
+def _conn_file_candidates() -> list[str]:
+    candidates: list[str] = []
+    env_path = os.environ.get("CREATOR_FORGE_CONN_PATH")
+    if env_path:
+        candidates.append(env_path)
 
-    This file is written by CreatorForge at startup and contains the
-    socket path (macOS) or host/port/token (Windows).
-    """
+    if sys.platform == "darwin":
+        home = os.path.expanduser("~")
+        candidates.extend([
+            os.path.join(
+                home, "Library", "Application Support",
+                "com.creatorforge.creatorForge", "CreatorForge", "ipc", "creator_forge.conn",
+            ),
+            os.path.join(
+                home, "Library", "Application Support",
+                "com.creatorforge.creatorForge", "ipc", "creator_forge.conn",
+            ),
+            os.path.join(
+                home, "Library", "Application Support",
+                "CreatorForge", "ipc", "creator_forge.conn",
+            ),
+            os.path.join(
+                home, "Library", "Application Support",
+                "creator_forge", "ipc", "creator_forge.conn",
+            ),
+            os.path.join(
+                home, "Library", "Application Support",
+                "com.creatorforge.creator_forge", "CreatorForge", "ipc", "creator_forge.conn",
+            ),
+        ])
+    elif sys.platform == "win32":
+        appdata = os.environ.get("APPDATA") or os.path.expanduser("~")
+        localappdata = os.environ.get("LOCALAPPDATA") or appdata
+        candidates.extend([
+            os.path.join(appdata, "com.creatorforge.creatorForge", "CreatorForge", "ipc", "creator_forge.conn"),
+            os.path.join(appdata, "com.creatorforge.creator_forge", "CreatorForge", "ipc", "creator_forge.conn"),
+            os.path.join(appdata, "CreatorForge", "ipc", "creator_forge.conn"),
+            os.path.join(appdata, "creator_forge", "ipc", "creator_forge.conn"),
+            os.path.join(localappdata, "CreatorForge", "ipc", "creator_forge.conn"),
+        ])
+    else:
+        xdg = os.environ.get("XDG_DATA_HOME") or os.path.join(
+            os.path.expanduser("~"), ".local", "share"
+        )
+        candidates.extend([
+            os.path.join(xdg, "CreatorForge", "ipc", "creator_forge.conn"),
+            os.path.join(xdg, "creator_forge", "ipc", "creator_forge.conn"),
+        ])
+
+    return candidates
+
+
+def _conn_file_path() -> str:
+    """Return the absolute path to the IPC connection descriptor file."""
+    for c in _conn_file_candidates():
+        if os.path.exists(c):
+            return c
     if sys.platform == "darwin":
         home = os.path.expanduser("~")
         return os.path.join(
@@ -113,7 +164,6 @@ def _conn_file_path() -> str:
     if sys.platform == "win32":
         appdata = os.environ.get("APPDATA") or os.path.expanduser("~")
         return os.path.join(appdata, "creator_forge", "ipc", "creator_forge.conn")
-    # Linux / other
     xdg = os.environ.get("XDG_DATA_HOME") or os.path.join(
         os.path.expanduser("~"), ".local", "share"
     )
@@ -121,16 +171,21 @@ def _conn_file_path() -> str:
 
 
 def _load_conn_info() -> dict | None:
-    path = _conn_file_path()
-    if not os.path.exists(path):
-        _log(f"IPC conn file not found: {path}")
-        return None
-    try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as exc:
-        _log(f"Failed to parse IPC conn file: {exc}")
-        return None
+    primary = _conn_file_path()
+    paths_to_check = [primary] + [c for c in _conn_file_candidates() if c != primary]
+
+    for path in paths_to_check:
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as exc:
+            _log(f"Failed to parse IPC conn file: {exc}")
+            return None
+
+    _log(f"IPC conn file not found: {primary}")
+    return None
 
 
 # ── IPC socket connection ─────────────────────────────────────────────────────

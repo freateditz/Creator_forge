@@ -186,14 +186,41 @@ async function handlePopupMessage(
   switch (message.kind) {
     case "get-candidates": {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      const candidates = tab?.id ? (tabCandidates.get(tab.id) ?? []) : [];
+      let candidates = tab?.id ? (tabCandidates.get(tab.id) ?? []) : [];
+      if (candidates.length === 0 && tab?.id) {
+        try {
+          const res = (await chrome.tabs.sendMessage(tab.id, { kind: "scan" })) as MediaCandidate[];
+          if (Array.isArray(res) && res.length > 0) {
+            candidates = res.slice(0, MAX_CANDIDATES);
+            tabCandidates.set(tab.id, candidates);
+            updateBadge(tab.id);
+          }
+        } catch (_) {}
+      }
       sendResponse(candidates);
       break;
     }
 
-    case "get-connection-state":
+    case "get-connection-state": {
+      if (connectionState === "disconnected" || connectionState === "error" || !nativePort) {
+        connectNativeHost();
+      }
       sendResponse(connectionState);
       break;
+    }
+
+    case "reconnect": {
+      if (nativePort) {
+        try {
+          nativePort.disconnect();
+        } catch (_) {}
+        nativePort = null;
+      }
+      connectionState = "disconnected";
+      connectNativeHost();
+      sendResponse(connectionState);
+      break;
+    }
 
     case "refresh-detection": {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -223,12 +250,17 @@ async function handlePopupMessage(
     case "analyze": {
       ensureConnected();
       const rid = _newRequestId();
+      const targetUrl =
+        message.candidate.url && !message.candidate.url.startsWith("blob:")
+          ? message.candidate.url
+          : message.candidate.pageUrl || message.candidate.url;
+
       try {
         const response = await sendNative({
           version: PROTOCOL_VERSION,
           type: "ANALYZE_MEDIA",
           requestId: rid,
-          url: message.candidate.url,
+          url: targetUrl,
           pageUrl: message.candidate.pageUrl,
           pageTitle: message.candidate.pageTitle,
         });
@@ -248,12 +280,17 @@ async function handlePopupMessage(
     case "download": {
       ensureConnected();
       const rid = _newRequestId();
+      const targetUrl =
+        message.candidate.url && !message.candidate.url.startsWith("blob:")
+          ? message.candidate.url
+          : message.candidate.pageUrl || message.candidate.url;
+
       try {
         const response = await sendNative({
           version: PROTOCOL_VERSION,
           type: "DOWNLOAD_REQUEST",
           requestId: rid,
-          url: message.candidate.url,
+          url: targetUrl,
           pageUrl: message.candidate.pageUrl,
           pageTitle: message.candidate.pageTitle,
           title: message.candidate.pageTitle,

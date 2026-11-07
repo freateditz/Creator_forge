@@ -19,16 +19,21 @@ class YtDlpLocator {
         ? p.join(AppConfig.instance.binDir, 'yt-dlp.exe')
         : p.join(AppConfig.instance.binDir, 'yt-dlp');
 
+    final home = Platform.environment['HOME'] ?? '';
     final candidates = <String>[
       managedExe,
       'yt-dlp',
+      if (home.isNotEmpty) p.join(home, '.local', 'bin', 'yt-dlp'),
       '/opt/homebrew/bin/yt-dlp',
       '/usr/local/bin/yt-dlp',
       '/usr/bin/yt-dlp',
+      '/Library/Frameworks/Python.framework/Versions/3.16/bin/yt-dlp',
+      '/Library/Frameworks/Python.framework/Versions/3.15/bin/yt-dlp',
       '/Library/Frameworks/Python.framework/Versions/3.14/bin/yt-dlp',
       '/Library/Frameworks/Python.framework/Versions/3.13/bin/yt-dlp',
       '/Library/Frameworks/Python.framework/Versions/3.12/bin/yt-dlp',
       '/Library/Frameworks/Python.framework/Versions/3.11/bin/yt-dlp',
+      '/Library/Frameworks/Python.framework/Versions/3.10/bin/yt-dlp',
     ];
 
     if (Platform.isWindows) {

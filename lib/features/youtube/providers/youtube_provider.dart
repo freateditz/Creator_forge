@@ -13,6 +13,7 @@ class YouTubeState {
   final String? errorMessage;
   final String? technicalError;
   final QualityOption selectedQuality;
+  final DownloadType selectedDownloadType;
   final bool isEnqueuing;
 
   const YouTubeState({
@@ -21,6 +22,7 @@ class YouTubeState {
     this.errorMessage,
     this.technicalError,
     QualityOption? selectedQuality,
+    this.selectedDownloadType = DownloadType.videoAndAudio,
     this.isEnqueuing = false,
   }) : selectedQuality = selectedQuality ?? QualityOption.best;
 
@@ -30,6 +32,7 @@ class YouTubeState {
     String? errorMessage,
     String? technicalError,
     QualityOption? selectedQuality,
+    DownloadType? selectedDownloadType,
     bool? isEnqueuing,
     bool clearError = false,
     bool clearMedia = false,
@@ -42,6 +45,7 @@ class YouTubeState {
           ? null
           : (technicalError ?? this.technicalError),
       selectedQuality: selectedQuality ?? this.selectedQuality,
+      selectedDownloadType: selectedDownloadType ?? this.selectedDownloadType,
       isEnqueuing: isEnqueuing ?? this.isEnqueuing,
     );
   }
@@ -65,8 +69,9 @@ class YouTubeNotifier extends Notifier<YouTubeState> {
       state = state.copyWith(
         metadataState: MetadataState.success,
         mediaInfo: info,
-        // Auto-select best quality option
+        // Auto-select best quality option and video+audio by default
         selectedQuality: QualityOption.best,
+        selectedDownloadType: DownloadType.videoAndAudio,
       );
     } on ValidationException catch (e) {
       state = state.copyWith(
@@ -92,23 +97,50 @@ class YouTubeNotifier extends Notifier<YouTubeState> {
     state = state.copyWith(selectedQuality: option);
   }
 
-  Future<void> startDownload({required String outputDirectory}) async {
+  void selectDownloadType(DownloadType type) {
+    // If switching between modes, update default quality option appropriately
+    QualityOption newQuality = state.selectedQuality;
+    final info = state.mediaInfo;
+    if (info != null) {
+      if (type == DownloadType.audioOnly) {
+        newQuality = QualityOption.audioBest;
+      } else if (type == DownloadType.videoOnly) {
+        newQuality = QualityOption.bestVideoOnly;
+      } else {
+        newQuality = QualityOption.best;
+      }
+    }
+    state = state.copyWith(
+      selectedDownloadType: type,
+      selectedQuality: newQuality,
+    );
+  }
+
+  Future<void> startDownload({
+    required String outputDirectory,
+    DownloadType? downloadType,
+    QualityOption? qualityOption,
+  }) async {
     final info = state.mediaInfo;
     if (info == null) return;
 
     state = state.copyWith(isEnqueuing: true);
     try {
-      final quality = state.selectedQuality;
-      final downloadType = quality.preset == QualityPreset.audioOnly
-          ? DownloadType.audioOnly
-          : DownloadType.videoAndAudio;
+      final type = downloadType ?? state.selectedDownloadType;
+      final quality = qualityOption ?? state.selectedQuality;
+
+      final String formatSelector = switch (type) {
+        DownloadType.audioOnly => quality.formatSelector,
+        DownloadType.videoOnly => quality.videoOnlyFormatSelector,
+        DownloadType.videoAndAudio => quality.formatSelector,
+      };
 
       await ref
           .read(downloadEngineProvider)
           .enqueue(
             url: info.url,
-            formatSelector: quality.formatSelector,
-            downloadType: downloadType,
+            formatSelector: formatSelector,
+            downloadType: type,
             outputDirectory: outputDirectory,
             cachedMetadata: info,
           );

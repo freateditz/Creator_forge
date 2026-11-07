@@ -9,11 +9,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../models/download_task.dart';
+import '../../models/media_info.dart';
 import '../../providers/app_providers.dart';
 import '../../routing/route_paths.dart';
 import 'providers/youtube_provider.dart';
 import 'widgets/format_selector.dart';
 import 'widgets/media_info_card.dart';
+import 'widgets/youtube_download_dialog.dart';
 
 class YouTubeScreen extends ConsumerStatefulWidget {
   const YouTubeScreen({super.key});
@@ -84,39 +87,79 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
 
   Widget _buildDependencyWarning() {
     final ytdlpAsync = ref.watch(ytdlpAvailableProvider);
-    return ytdlpAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (available) {
-        if (available) return const SizedBox.shrink();
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.warningSurface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
-          ),
-          child: Row(
-            children: [
-              const Icon(
-                Icons.warning_amber_outlined,
-                color: AppColors.warning,
-                size: 18,
+    final ffmpegAsync = ref.watch(ffmpegAvailableProvider);
+
+    return Column(
+      children: [
+        ytdlpAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+          data: (available) {
+            if (available) return const SizedBox.shrink();
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.warningSurface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'yt-dlp is not installed. Install it with: pip install yt-dlp',
-                  style: AppTextStyles.bodySmall.copyWith(
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.warning_amber_outlined,
                     color: AppColors.warning,
+                    size: 18,
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'yt-dlp is not installed. Install it with: pip install yt-dlp',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.warning,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ).animate().fadeIn(duration: 300.ms);
-      },
+            ).animate().fadeIn(duration: 300.ms);
+          },
+        ),
+        ffmpegAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+          data: (available) {
+            if (available) return const SizedBox.shrink();
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.warningSurface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    color: AppColors.warning,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'FFmpeg is not installed. YouTube HD/4K videos require FFmpeg to merge video and audio streams.',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.warning,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(duration: 300.ms);
+          },
+        ),
+      ],
     );
   }
 
@@ -132,7 +175,7 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
               hintText: 'Paste a URL (YouTube, or any other supported site)…',
               prefixIcon: Icon(Icons.link, size: 18),
             ),
-            onSubmitted: (_) => _fetchMetadata(),
+            onSubmitted: (_) => _fetchMetadataAndOpenDialog(),
             keyboardType: TextInputType.url,
           ),
         ),
@@ -142,7 +185,7 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
         ElevatedButton.icon(
           onPressed: ytState.metadataState == MetadataState.loading
               ? null
-              : _fetchMetadata,
+              : _fetchMetadataAndOpenDialog,
           icon: ytState.metadataState == MetadataState.loading
               ? const SizedBox(
                   width: 14,
@@ -152,8 +195,8 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
                     color: Colors.white,
                   ),
                 )
-              : const Icon(Icons.search, size: 16),
-          label: const Text('Analyse'),
+              : const Icon(Icons.download, size: 16),
+          label: const Text('Download Options'),
         ),
         if (ytState.metadataState != MetadataState.idle) ...[
           const SizedBox(width: 8),
@@ -171,13 +214,13 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
 
   Widget _buildPasteButton() {
     return Tooltip(
-      message: 'Paste from clipboard (Ctrl+V)',
+      message: 'Paste from clipboard & open download options (Ctrl+V)',
       child: OutlinedButton(
         onPressed: () async {
           final data = await Clipboard.getData(Clipboard.kTextPlain);
-          if (data?.text != null) {
-            _urlController.text = data!.text!;
-            _fetchMetadata();
+          if (data?.text != null && data!.text!.trim().isNotEmpty) {
+            _urlController.text = data.text!.trim();
+            _fetchMetadataAndOpenDialog();
           }
         },
         style: OutlinedButton.styleFrom(
@@ -289,6 +332,15 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
         settingsAsync.valueOrNull?.defaultDownloadsDir ??
         Directory.current.path;
 
+    final List<QualityOption> qualityOptions;
+    if (ytState.selectedDownloadType == DownloadType.audioOnly) {
+      qualityOptions = info.audioQualityOptions;
+    } else if (ytState.selectedDownloadType == DownloadType.videoOnly) {
+      qualityOptions = info.videoOnlyQualityOptions;
+    } else {
+      qualityOptions = info.videoQualityOptions;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -296,9 +348,11 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
             .animate()
             .fadeIn(duration: 250.ms)
             .slideY(begin: 0.04, end: 0),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
+        _buildModeSelector(ytState),
+        const SizedBox(height: 20),
         FormatSelector(
-          options: info.availableQualityOptions,
+          options: qualityOptions,
           selected: ytState.selectedQuality,
           onChanged: (opt) =>
               ref.read(youTubeProvider.notifier).selectQuality(opt),
@@ -306,8 +360,94 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
         const SizedBox(height: 24),
         _buildOutputSection(outputDir),
         const SizedBox(height: 24),
-        _buildDownloadButton(ytState, outputDir),
+        _buildDownloadButton(ytState, outputDir, info),
       ],
+    );
+  }
+
+  Widget _buildModeSelector(YouTubeState ytState) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Download Mode', style: AppTextStyles.headingSmall),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _buildModeChip(
+              type: DownloadType.videoAndAudio,
+              icon: Icons.movie_filter_outlined,
+              label: 'Video + Audio',
+              selected: ytState.selectedDownloadType == DownloadType.videoAndAudio,
+              onTap: () => ref
+                  .read(youTubeProvider.notifier)
+                  .selectDownloadType(DownloadType.videoAndAudio),
+            ),
+            _buildModeChip(
+              type: DownloadType.videoOnly,
+              icon: Icons.videocam_outlined,
+              label: 'Video only (silent)',
+              selected: ytState.selectedDownloadType == DownloadType.videoOnly,
+              onTap: () => ref
+                  .read(youTubeProvider.notifier)
+                  .selectDownloadType(DownloadType.videoOnly),
+            ),
+            _buildModeChip(
+              type: DownloadType.audioOnly,
+              icon: Icons.audiotrack_outlined,
+              label: 'Audio only (MP3)',
+              selected: ytState.selectedDownloadType == DownloadType.audioOnly,
+              onTap: () => ref
+                  .read(youTubeProvider.notifier)
+                  .selectDownloadType(DownloadType.audioOnly),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModeChip({
+    required DownloadType type,
+    required IconData icon,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primarySurface : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.border,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? AppColors.primary : AppColors.textMedium,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: AppTextStyles.labelMedium.copyWith(
+                color: selected ? AppColors.primary : AppColors.textHigh,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -370,7 +510,11 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
     }
   }
 
-  Widget _buildDownloadButton(YouTubeState ytState, String outputDir) {
+  Widget _buildDownloadButton(
+    YouTubeState ytState,
+    String outputDir,
+    MediaInfo info,
+  ) {
     return Row(
       children: [
         ElevatedButton.icon(
@@ -391,9 +535,15 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
                 )
               : const Icon(Icons.download, size: 18),
           label: Text(
-            ytState.isEnqueuing ? 'Adding to queue…' : 'Download',
+            ytState.isEnqueuing ? 'Adding to queue…' : 'Download Now',
             style: AppTextStyles.labelLarge.copyWith(color: Colors.white),
           ),
+        ),
+        const SizedBox(width: 10),
+        OutlinedButton.icon(
+          onPressed: () => _openDownloadDialog(info),
+          icon: const Icon(Icons.open_in_new, size: 16),
+          label: const Text('Options Window…'),
         ),
         const SizedBox(width: 12),
         OutlinedButton(
@@ -404,10 +554,59 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
     ).animate().fadeIn(delay: 150.ms, duration: 250.ms);
   }
 
-  void _fetchMetadata() {
+  Future<void> _fetchMetadataAndOpenDialog() async {
     final url = _urlController.text.trim();
     if (url.isEmpty) return;
-    ref.read(youTubeProvider.notifier).fetchMetadata(url);
+    await ref.read(youTubeProvider.notifier).fetchMetadata(url);
+    if (!mounted) return;
+    final info = ref.read(youTubeProvider).mediaInfo;
+    if (info != null) {
+      _openDownloadDialog(info);
+    }
+  }
+
+  Future<void> _openDownloadDialog(MediaInfo info) async {
+    final settingsAsync = ref.read(appSettingsProvider);
+    final outputDir = _customOutputDir ??
+        settingsAsync.valueOrNull?.defaultDownloadsDir ??
+        Directory.current.path;
+    final downloaded = await YouTubeDownloadDialog.show(
+      context,
+      mediaInfo: info,
+      initialOutputDir: outputDir,
+    );
+    if (downloaded == true && mounted) {
+      _showSuccessNotification();
+    }
+  }
+
+  void _showSuccessNotification() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.download, size: 16, color: Colors.white),
+            const SizedBox(width: 8),
+            const Text('Added to download queue'),
+            const Spacer(),
+            TextButton(
+              onPressed: () => context.go(RoutePaths.downloads),
+              child: const Text(
+                'View',
+                style: TextStyle(color: AppColors.primary),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppColors.surfaceHigher,
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: AppColors.border),
+        ),
+      ),
+    );
   }
 
   Future<void> _startDownload(String outputDir) async {
@@ -416,32 +615,7 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
         .startDownload(outputDirectory: outputDir);
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.download, size: 16, color: Colors.white),
-              const SizedBox(width: 8),
-              const Text('Added to download queue'),
-              const Spacer(),
-              TextButton(
-                onPressed: () => context.go(RoutePaths.downloads),
-                child: const Text(
-                  'View',
-                  style: TextStyle(color: AppColors.primary),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: AppColors.surfaceHigher,
-          duration: const Duration(seconds: 4),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: AppColors.border),
-          ),
-        ),
-      );
+      _showSuccessNotification();
     }
   }
 }

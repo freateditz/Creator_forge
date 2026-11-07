@@ -430,7 +430,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
     }
 
     if (exitCode == 0) {
-      final outputFile = await _findOutputFile(tempDir);
+      final outputFile = await _findOutputFile(tempDir, task);
       if (outputFile != null) {
         // Verify the file is non-empty before accepting it.
         final fileStat = await outputFile.stat();
@@ -481,12 +481,23 @@ class YtDlpDownloadEngine implements DownloadEngine {
 
   String _resolveFormatSelector(DownloadTask task) {
     if (task.selectedFormat != null && task.selectedFormat!.isNotEmpty) {
+      if (task.downloadType == DownloadType.videoOnly) {
+        // Strip audio stream specification if user selected video-only
+        if (task.selectedFormat!.contains('+')) {
+          final parts = task.selectedFormat!.split('/');
+          final videoOnlyParts = parts.map((part) {
+            if (part.contains('+')) return part.split('+').first;
+            return part;
+          });
+          return videoOnlyParts.join('/');
+        }
+      }
       return task.selectedFormat!;
     }
     return switch (task.downloadType) {
       DownloadType.audioOnly =>
-        'bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio',
-      DownloadType.videoOnly => 'bestvideo[ext=mp4]/bestvideo',
+        'bestaudio[ext=m4a]/bestaudio[ext=mp4]/bestaudio/best',
+      DownloadType.videoOnly => 'bestvideo[ext=mp4]/bestvideo/best',
       DownloadType.videoAndAudio =>
         'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best',
     };
@@ -527,7 +538,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
         : firstLine;
   }
 
-  Future<File?> _findOutputFile(Directory dir) async {
+  Future<File?> _findOutputFile(Directory dir, [DownloadTask? task]) async {
     try {
       final entities = await dir.list().toList();
       final files = entities
@@ -540,7 +551,52 @@ class YtDlpDownloadEngine implements DownloadEngine {
           )
           .toList();
       if (files.isEmpty) return null;
-      // If multiple files (shouldn't happen normally), pick largest
+
+      // If video+audio was requested and yt-dlp left separate video and audio files:
+      if (task?.downloadType == DownloadType.videoAndAudio && files.length >= 2) {
+        File? videoFile;
+        File? audioFile;
+
+        for (final file in files) {
+          final ext = p.extension(file.path).toLowerCase();
+          final name = p.basename(file.path).toLowerCase();
+          if (name.contains('.f') || name.contains('video') || name.contains('audio')) {
+            if (ext == '.mp4' || ext == '.webm' || ext == '.mkv') {
+              if (videoFile == null || file.lengthSync() > videoFile.lengthSync()) {
+                videoFile = file;
+              }
+            }
+            if (ext == '.m4a' || ext == '.opus' || ext == '.mp3' || (ext == '.webm' && file != videoFile)) {
+              if (audioFile == null || file.lengthSync() < (videoFile?.lengthSync() ?? 0)) {
+                audioFile = file;
+              }
+            }
+          }
+        }
+
+        // If we found both and they are distinct files:
+        if (videoFile != null && audioFile != null && videoFile.path != audioFile.path) {
+          try {
+            _updateTask(task!.id, status: DownloadStatus.merging);
+            final baseName = p.basenameWithoutExtension(videoFile.path).replaceAll(RegExp(r'\.f[0-9]+$'), '');
+            final mergedPath = p.join(dir.path, '$baseName.mp4');
+            _log.info('Merging separate downloaded video and audio files: ${videoFile.path} + ${audioFile.path} -> $mergedPath');
+            await _ffmpegService.mergeVideoAudio(
+              videoPath: videoFile.path,
+              audioPath: audioFile.path,
+              outputPath: mergedPath,
+            );
+            final mergedFile = File(mergedPath);
+            if (await mergedFile.exists() && (await mergedFile.length()) > 0) {
+              return mergedFile;
+            }
+          } catch (e) {
+            _log.warning('Fallback FFmpeg merge failed: $e');
+          }
+        }
+      }
+
+      // If single file or fallback: pick largest
       files.sort((a, b) => b.statSync().size.compareTo(a.statSync().size));
       return files.first;
     } catch (_) {

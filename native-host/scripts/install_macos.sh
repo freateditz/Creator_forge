@@ -142,7 +142,19 @@ echo "  Installed: $HOST_SCRIPT_DST"
 
 cat > "$WRAPPER_SCRIPT" << WRAPPER
 #!/usr/bin/env bash
-exec "$PYTHON" "$HOST_SCRIPT_DST" "\$@"
+if [[ -x "$PYTHON" ]]; then
+  exec "$PYTHON" "$HOST_SCRIPT_DST" "\$@"
+elif command -v python3 &>/dev/null; then
+  exec python3 "$HOST_SCRIPT_DST" "\$@"
+elif [[ -x "/Library/Frameworks/Python.framework/Versions/3.15/bin/python3" ]]; then
+  exec "/Library/Frameworks/Python.framework/Versions/3.15/bin/python3" "$HOST_SCRIPT_DST" "\$@"
+elif [[ -x "/opt/homebrew/bin/python3" ]]; then
+  exec "/opt/homebrew/bin/python3" "$HOST_SCRIPT_DST" "\$@"
+elif [[ -x "/usr/local/bin/python3" ]]; then
+  exec "/usr/local/bin/python3" "$HOST_SCRIPT_DST" "\$@"
+else
+  exec python3 "$HOST_SCRIPT_DST" "\$@"
+fi
 WRAPPER
 chmod +x "$WRAPPER_SCRIPT"
 echo "  Wrapper:   $WRAPPER_SCRIPT"

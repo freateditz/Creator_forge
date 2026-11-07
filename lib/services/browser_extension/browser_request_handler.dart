@@ -44,7 +44,12 @@ class BrowserRequestHandler {
 
   Future<BrowserResponse> _handleAnalyze(BrowserAnalyzeMsg msg) async {
     final rid = msg.requestId;
-    if (msg.url.isEmpty) {
+    String targetUrl = msg.url;
+    if ((targetUrl.startsWith('blob:') || targetUrl.isEmpty) && msg.pageUrl.isNotEmpty) {
+      targetUrl = msg.pageUrl;
+    }
+
+    if (targetUrl.isEmpty) {
       return BrowserResponse.downloadRejected(
         requestId: rid,
         error: 'URL is required.',
@@ -52,7 +57,7 @@ class BrowserRequestHandler {
     }
 
     try {
-      Validators.validateUrl(msg.url);
+      Validators.validateUrl(targetUrl);
     } catch (e) {
       return BrowserResponse.downloadRejected(
         requestId: rid,
@@ -61,7 +66,7 @@ class BrowserRequestHandler {
     }
 
     try {
-      final info = await _metadataResolver.resolve(msg.url);
+      final info = await _metadataResolver.resolve(targetUrl);
       return BrowserResponse(
         type: OutgoingMsgType.analyzeResult,
         requestId: rid,
@@ -78,15 +83,15 @@ class BrowserRequestHandler {
     } catch (e) {
       // Not a yt-dlp-resolvable URL — return basic direct-download info.
       _log.info(
-        'Metadata resolver failed for ${msg.url}: $e; treating as direct.',
+        'Metadata resolver failed for $targetUrl: $e; treating as direct.',
       );
       final filename =
-          Uri.tryParse(msg.url)?.pathSegments.lastOrNull ?? 'media';
+          Uri.tryParse(targetUrl)?.pathSegments.lastOrNull ?? 'media';
       return BrowserResponse(
         type: OutgoingMsgType.analyzeResult,
         requestId: rid,
         extra: {
-          'url': msg.url,
+          'url': targetUrl,
           'title': filename,
           'supported': true,
           'isDirectDownload': true,
@@ -94,7 +99,7 @@ class BrowserRequestHandler {
             {
               'id': 'direct',
               'label': 'Direct download',
-              'ext': _guessExt(msg.url),
+              'ext': _guessExt(targetUrl),
             },
           ],
         },
@@ -104,7 +109,12 @@ class BrowserRequestHandler {
 
   Future<BrowserResponse> _handleDownload(BrowserDownloadMsg msg) async {
     final rid = msg.requestId;
-    if (msg.url.isEmpty) {
+    String targetUrl = msg.url;
+    if ((targetUrl.startsWith('blob:') || targetUrl.isEmpty) && msg.pageUrl.isNotEmpty) {
+      targetUrl = msg.pageUrl;
+    }
+
+    if (targetUrl.isEmpty) {
       return BrowserResponse.downloadRejected(
         requestId: rid,
         error: 'URL is required.',
@@ -114,7 +124,7 @@ class BrowserRequestHandler {
     // Validate URL — reject unsafe schemes, loopback, and local paths.
     Uri validated;
     try {
-      validated = Validators.validateUrl(msg.url);
+      validated = Validators.validateUrl(targetUrl);
     } catch (e) {
       return BrowserResponse.downloadRejected(
         requestId: rid,

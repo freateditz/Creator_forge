@@ -182,6 +182,7 @@ export type BgToPopupMsg =
 export type PopupToBgMsg =
   | { kind: "get-candidates" }
   | { kind: "get-connection-state" }
+  | { kind: "reconnect" }
   | { kind: "analyze"; candidate: MediaCandidate }
   | { kind: "download"; candidate: MediaCandidate; formatSelector?: string; downloadType?: DownloadType }
   | { kind: "refresh-detection" }

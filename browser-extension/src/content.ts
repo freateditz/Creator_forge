@@ -51,6 +51,23 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
+// ── Navigation listener for Single-Page Apps (YouTube, etc.) ──────────────────
+
+let lastUrl = location.href;
+function onUrlChange(): void {
+  if (location.href !== lastUrl) {
+    lastUrl = location.href;
+    runScan();
+  }
+}
+
+window.addEventListener("yt-navigate-finish", () => {
+  lastUrl = location.href;
+  setTimeout(runScan, 400);
+});
+window.addEventListener("popstate", onUrlChange);
+window.addEventListener("hashchange", onUrlChange);
+
 // ── Initial scan on page load (document_idle) ─────────────────────────────────
 
 runScan();

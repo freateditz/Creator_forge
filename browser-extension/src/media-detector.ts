@@ -130,10 +130,37 @@ function _extractFromElement(
   return results;
 }
 
+export function isSupportedMediaPage(url: string): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (host.includes("youtube.com") || host.includes("youtu.be")) {
+      return (
+        u.pathname.startsWith("/watch") ||
+        u.pathname.startsWith("/shorts") ||
+        u.pathname.startsWith("/live")
+      );
+    }
+    if (host.includes("vimeo.com")) return true;
+    if (host.includes("tiktok.com")) return true;
+    if (host.includes("instagram.com")) return true;
+    if (host.includes("twitter.com") || host.includes("x.com")) return true;
+    if (host.includes("reddit.com")) return true;
+    if (host.includes("soundcloud.com")) return true;
+    if (host.includes("facebook.com")) return true;
+    if (host.includes("twitch.tv")) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export class MediaDetector {
   private _observer: MutationObserver | null = null;
   private _candidates = new Map<string, MediaCandidate>();
   private _onChange: ((candidates: MediaCandidate[]) => void) | null = null;
+  private _urlListener: (() => void) | null = null;
 
   constructor(onChange?: (candidates: MediaCandidate[]) => void) {
     this._onChange = onChange ?? null;
@@ -143,8 +170,25 @@ export class MediaDetector {
   scan(): MediaCandidate[] {
     this._candidates.clear();
     const pageUrl = location.href;
-    const pageTitle = document.title || pageUrl;
+    const rawTitle = document.title || pageUrl;
+    const pageTitle = rawTitle.replace(/\s*-\s*YouTube$/, "").trim() || rawTitle;
 
+    // 1. If on YouTube or a recognized media page, register the page candidate
+    if (isSupportedMediaPage(pageUrl)) {
+      const pageCandidate: MediaCandidate = {
+        id: _makeId(pageUrl),
+        url: pageUrl,
+        pageUrl,
+        pageTitle,
+        elementType: "video",
+        detectionSource: "manual",
+        downloadability: "stream",
+        detectedAt: Date.now(),
+      };
+      this._candidates.set(pageCandidate.id, pageCandidate);
+    }
+
+    // 2. Scan DOM media elements
     document
       .querySelectorAll<HTMLVideoElement | HTMLAudioElement>("video, audio")
       .forEach((el) => {
@@ -156,9 +200,24 @@ export class MediaDetector {
     return this._getAll();
   }
 
-  /** Start watching for dynamically added/changed media elements. */
+  /** Start watching for dynamically added/changed media elements and SPA navigations. */
   observe(): void {
     if (this._observer) return;
+
+    let currentHref = location.href;
+    const checkHref = () => {
+      if (location.href !== currentHref) {
+        currentHref = location.href;
+        this.scan();
+        this._notify();
+      }
+    };
+
+    this._urlListener = checkHref;
+    window.addEventListener("yt-navigate-finish", checkHref, { passive: true });
+    window.addEventListener("popstate", checkHref, { passive: true });
+    window.addEventListener("hashchange", checkHref, { passive: true });
+
     this._observer = new MutationObserver((mutations) => {
       let changed = false;
       for (const mut of mutations) {
@@ -188,6 +247,12 @@ export class MediaDetector {
   destroy(): void {
     this._observer?.disconnect();
     this._observer = null;
+    if (this._urlListener) {
+      window.removeEventListener("yt-navigate-finish", this._urlListener);
+      window.removeEventListener("popstate", this._urlListener);
+      window.removeEventListener("hashchange", this._urlListener);
+      this._urlListener = null;
+    }
     this._onChange = null;
   }
 
