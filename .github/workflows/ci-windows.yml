@@ -109,7 +109,7 @@ jobs:
             Write-Warning "Failed to download FFmpeg: $_"
           }
           
-          Write-Host "Bundled binaries in $binDir:"
+          Write-Host "Bundled binaries in ${binDir}:"
           Get-ChildItem $binDir -Recurse
 
       # ── Browser extension ─────────────────────────────────────────────────────
