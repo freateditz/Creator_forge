@@ -102,7 +102,9 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
               decoration: BoxDecoration(
                 color: AppColors.warningSurface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: AppColors.warning.withValues(alpha: 0.4),
+                ),
               ),
               child: Row(
                 children: [
@@ -114,7 +116,8 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'yt-dlp is not installed. Install it with: pip install yt-dlp',
+                      'yt-dlp is not installed. '
+                      'Install it with: pip install yt-dlp',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.warning,
                       ),
@@ -136,7 +139,9 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
               decoration: BoxDecoration(
                 color: AppColors.warningSurface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: AppColors.warning.withValues(alpha: 0.4),
+                ),
               ),
               child: Row(
                 children: [
@@ -148,7 +153,8 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'FFmpeg is not installed. YouTube HD/4K videos require FFmpeg to merge video and audio streams.',
+                      'FFmpeg is not installed. YouTube HD/4K videos '
+                      'require FFmpeg to merge video and audio streams.',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.warning,
                       ),
@@ -379,7 +385,8 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
               type: DownloadType.videoAndAudio,
               icon: Icons.movie_filter_outlined,
               label: 'Video + Audio',
-              selected: ytState.selectedDownloadType == DownloadType.videoAndAudio,
+              selected:
+                  ytState.selectedDownloadType == DownloadType.videoAndAudio,
               onTap: () => ref
                   .read(youTubeProvider.notifier)
                   .selectDownloadType(DownloadType.videoAndAudio),
@@ -567,7 +574,8 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
 
   Future<void> _openDownloadDialog(MediaInfo info) async {
     final settingsAsync = ref.read(appSettingsProvider);
-    final outputDir = _customOutputDir ??
+    final outputDir =
+        _customOutputDir ??
         settingsAsync.valueOrNull?.defaultDownloadsDir ??
         Directory.current.path;
     final downloaded = await YouTubeDownloadDialog.show(

@@ -121,8 +121,26 @@ class IpcServer {
     if (Platform.isMacOS) {
       final home = Platform.environment['HOME'] ?? '';
       if (home.isNotEmpty) {
-        list.add(p.join(home, 'Library', 'Application Support', 'CreatorForge', 'ipc', 'creator_forge.conn'));
-        list.add(p.join(home, 'Library', 'Application Support', 'creator_forge', 'ipc', 'creator_forge.conn'));
+        list.add(
+          p.join(
+            home,
+            'Library',
+            'Application Support',
+            'CreatorForge',
+            'ipc',
+            'creator_forge.conn',
+          ),
+        );
+        list.add(
+          p.join(
+            home,
+            'Library',
+            'Application Support',
+            'creator_forge',
+            'ipc',
+            'creator_forge.conn',
+          ),
+        );
       }
     } else if (Platform.isWindows) {
       final appData = Platform.environment['APPDATA'] ?? '';
@@ -133,8 +151,26 @@ class IpcServer {
     } else {
       final home = Platform.environment['HOME'] ?? '';
       if (home.isNotEmpty) {
-        list.add(p.join(home, '.local', 'share', 'CreatorForge', 'ipc', 'creator_forge.conn'));
-        list.add(p.join(home, '.local', 'share', 'creator_forge', 'ipc', 'creator_forge.conn'));
+        list.add(
+          p.join(
+            home,
+            '.local',
+            'share',
+            'CreatorForge',
+            'ipc',
+            'creator_forge.conn',
+          ),
+        );
+        list.add(
+          p.join(
+            home,
+            '.local',
+            'share',
+            'creator_forge',
+            'ipc',
+            'creator_forge.conn',
+          ),
+        );
       }
     }
     return list;

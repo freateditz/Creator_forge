@@ -45,7 +45,7 @@ class BrowserRequestHandler {
   Future<BrowserResponse> _handleAnalyze(BrowserAnalyzeMsg msg) async {
     final rid = msg.requestId;
     String targetUrl = msg.url;
-    if ((targetUrl.startsWith('blob:') || targetUrl.isEmpty) && msg.pageUrl.isNotEmpty) {
+    if (targetUrl.startsWith('blob:') && msg.pageUrl.isNotEmpty) {
       targetUrl = msg.pageUrl;
     }
 
@@ -110,7 +110,8 @@ class BrowserRequestHandler {
   Future<BrowserResponse> _handleDownload(BrowserDownloadMsg msg) async {
     final rid = msg.requestId;
     String targetUrl = msg.url;
-    if ((targetUrl.startsWith('blob:') || targetUrl.isEmpty) && msg.pageUrl.isNotEmpty) {
+    if ((targetUrl.startsWith('blob:') || targetUrl.isEmpty) &&
+        msg.pageUrl.isNotEmpty) {
       targetUrl = msg.pageUrl;
     }
 

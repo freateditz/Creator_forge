@@ -439,7 +439,9 @@ class YtDlpDownloadEngine implements DownloadEngine {
           _finishTask(
             taskId,
             status: DownloadStatus.failed,
-            errorMessage: 'Download produced an empty file. The source may be unavailable.',
+            errorMessage:
+                'Download produced an empty file. '
+                'The source may be unavailable.',
           );
           return;
         }
@@ -552,22 +554,30 @@ class YtDlpDownloadEngine implements DownloadEngine {
           .toList();
       if (files.isEmpty) return null;
 
-      // If video+audio was requested and yt-dlp left separate video and audio files:
-      if (task?.downloadType == DownloadType.videoAndAudio && files.length >= 2) {
+      // If video+audio was requested and yt-dlp left separate streams:
+      if (task?.downloadType == DownloadType.videoAndAudio &&
+          files.length >= 2) {
         File? videoFile;
         File? audioFile;
 
         for (final file in files) {
           final ext = p.extension(file.path).toLowerCase();
           final name = p.basename(file.path).toLowerCase();
-          if (name.contains('.f') || name.contains('video') || name.contains('audio')) {
+          if (name.contains('.f') ||
+              name.contains('video') ||
+              name.contains('audio')) {
             if (ext == '.mp4' || ext == '.webm' || ext == '.mkv') {
-              if (videoFile == null || file.lengthSync() > videoFile.lengthSync()) {
+              if (videoFile == null ||
+                  file.lengthSync() > videoFile.lengthSync()) {
                 videoFile = file;
               }
             }
-            if (ext == '.m4a' || ext == '.opus' || ext == '.mp3' || (ext == '.webm' && file != videoFile)) {
-              if (audioFile == null || file.lengthSync() < (videoFile?.lengthSync() ?? 0)) {
+            if (ext == '.m4a' ||
+                ext == '.opus' ||
+                ext == '.mp3' ||
+                (ext == '.webm' && file != videoFile)) {
+              if (audioFile == null ||
+                  file.lengthSync() < (videoFile?.lengthSync() ?? 0)) {
                 audioFile = file;
               }
             }
@@ -575,12 +585,19 @@ class YtDlpDownloadEngine implements DownloadEngine {
         }
 
         // If we found both and they are distinct files:
-        if (videoFile != null && audioFile != null && videoFile.path != audioFile.path) {
+        if (videoFile != null &&
+            audioFile != null &&
+            videoFile.path != audioFile.path) {
           try {
             _updateTask(task!.id, status: DownloadStatus.merging);
-            final baseName = p.basenameWithoutExtension(videoFile.path).replaceAll(RegExp(r'\.f[0-9]+$'), '');
+            final baseName = p
+                .basenameWithoutExtension(videoFile.path)
+                .replaceAll(RegExp(r'\.f[0-9]+$'), '');
             final mergedPath = p.join(dir.path, '$baseName.mp4');
-            _log.info('Merging separate downloaded video and audio files: ${videoFile.path} + ${audioFile.path} -> $mergedPath');
+            _log.info(
+              'Merging separate downloaded video and audio files: '
+              '${videoFile.path} + ${audioFile.path} -> $mergedPath',
+            );
             await _ffmpegService.mergeVideoAudio(
               videoPath: videoFile.path,
               audioPath: audioFile.path,

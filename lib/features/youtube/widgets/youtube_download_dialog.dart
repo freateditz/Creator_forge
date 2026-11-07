@@ -80,7 +80,9 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
   Future<void> _handleDownload(String finalOutputDir) async {
     setState(() => _isSubmitting = true);
     try {
-      await ref.read(youTubeProvider.notifier).startDownload(
+      await ref
+          .read(youTubeProvider.notifier)
+          .startDownload(
             outputDirectory: finalOutputDir,
             downloadType: _selectedMode,
             qualityOption: _selectedQuality,
@@ -104,48 +106,55 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(appSettingsProvider);
-    final defaultDir = settingsAsync.valueOrNull?.defaultDownloadsDir ??
+    final defaultDir =
+        settingsAsync.valueOrNull?.defaultDownloadsDir ??
         Directory.current.path;
     final outputDir = _customOutputDir ?? defaultDir;
 
     return Dialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border),
-      ),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 580, maxHeight: 720),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(context),
-            const Divider(height: 1, color: AppColors.border),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildMediaPreview(),
-                    const SizedBox(height: 20),
-                    _buildModeSelector(),
-                    const SizedBox(height: 20),
-                    _buildQualitySection(),
-                    const SizedBox(height: 20),
-                    _buildDestinationSection(outputDir),
-                  ],
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: AppColors.border),
+          ),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 580, maxHeight: 720),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildHeader(context),
+                const Divider(height: 1, color: AppColors.border),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildMediaPreview(),
+                        const SizedBox(height: 20),
+                        _buildModeSelector(),
+                        const SizedBox(height: 20),
+                        _buildQualitySection(),
+                        const SizedBox(height: 20),
+                        _buildDestinationSection(outputDir),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+                const Divider(height: 1, color: AppColors.border),
+                _buildFooterActions(context, outputDir),
+              ],
             ),
-            const Divider(height: 1, color: AppColors.border),
-            _buildFooterActions(context, outputDir),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(duration: 200.ms).scale(begin: const Offset(0.97, 0.97), end: const Offset(1, 1));
+          ),
+        )
+        .animate()
+        .fadeIn(duration: 200.ms)
+        .scale(begin: const Offset(0.97, 0.97), end: const Offset(1, 1));
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -166,10 +175,7 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            'Download Options',
-            style: AppTextStyles.headingLarge,
-          ),
+          Text('Download Options', style: AppTextStyles.headingLarge),
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.close, size: 20),
@@ -218,20 +224,31 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
                       ),
                       errorWidget: (_, _, _) => Container(
                         color: AppColors.surfaceHigher,
-                        child: const Icon(Icons.video_library, size: 28, color: AppColors.textLow),
+                        child: const Icon(
+                          Icons.video_library,
+                          size: 28,
+                          color: AppColors.textLow,
+                        ),
                       ),
                     )
                   else
                     Container(
                       color: AppColors.surfaceHigher,
-                      child: const Icon(Icons.video_library, size: 28, color: AppColors.textLow),
+                      child: const Icon(
+                        Icons.video_library,
+                        size: 28,
+                        color: AppColors.textLow,
+                      ),
                     ),
                   if (info.durationSeconds != null)
                     Positioned(
                       bottom: 4,
                       right: 4,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black87,
                           borderRadius: BorderRadius.circular(4),
@@ -257,7 +274,9 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
               children: [
                 Text(
                   info.title,
-                  style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -265,12 +284,18 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.person_outline, size: 14, color: AppColors.textMedium),
+                      const Icon(
+                        Icons.person_outline,
+                        size: 14,
+                        color: AppColors.textMedium,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           info.uploaderName!,
-                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textMedium),
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.textMedium,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -343,7 +368,9 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primarySurface : AppColors.surfaceElevated,
+          color: isSelected
+              ? AppColors.primarySurface
+              : AppColors.surfaceElevated,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -382,7 +409,9 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
               subtitle,
               style: TextStyle(
                 fontSize: 11,
-                color: isSelected ? AppColors.primary.withValues(alpha: 0.8) : AppColors.textLow,
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.8)
+                    : AppColors.textLow,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -409,14 +438,21 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
         Row(
           children: [
             Text(
-              _selectedMode == DownloadType.audioOnly ? 'Audio Quality' : 'Video Resolution',
-              style: AppTextStyles.labelLarge.copyWith(color: AppColors.textMedium),
+              _selectedMode == DownloadType.audioOnly
+                  ? 'Audio Quality'
+                  : 'Video Resolution',
+              style: AppTextStyles.labelLarge.copyWith(
+                color: AppColors.textMedium,
+              ),
             ),
             const Spacer(),
             if (_selectedMode == DownloadType.videoAndAudio)
               Text(
                 'Audio included in MP4',
-                style: AppTextStyles.bodySmall.copyWith(color: AppColors.success, fontSize: 11),
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.success,
+                  fontSize: 11,
+                ),
               ),
           ],
         ),
@@ -425,7 +461,8 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
           spacing: 8,
           runSpacing: 8,
           children: options.map((opt) {
-            final isSelected = opt.label == _selectedQuality.label ||
+            final isSelected =
+                opt.label == _selectedQuality.label ||
                 opt.formatSelector == _selectedQuality.formatSelector;
             return _buildQualityChip(opt, isSelected);
           }).toList(),
@@ -446,8 +483,8 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
           color: isSelected
               ? AppColors.primarySurface
               : isAvailable
-                  ? AppColors.surfaceElevated
-                  : AppColors.surface,
+              ? AppColors.surfaceElevated
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -467,8 +504,8 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
                 color: isSelected
                     ? AppColors.primary
                     : isAvailable
-                        ? AppColors.textHigh
-                        : AppColors.textDisabled,
+                    ? AppColors.textHigh
+                    : AppColors.textDisabled,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 decoration: isAvailable ? null : TextDecoration.lineThrough,
               ),
@@ -477,7 +514,10 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
               const SizedBox(width: 6),
               Text(
                 'N/A',
-                style: AppTextStyles.labelSmall.copyWith(color: AppColors.textDisabled, fontSize: 10),
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.textDisabled,
+                  fontSize: 10,
+                ),
               ),
             ],
           ],
@@ -504,7 +544,11 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.folder_outlined, size: 16, color: AppColors.textMedium),
+              const Icon(
+                Icons.folder_outlined,
+                size: 16,
+                color: AppColors.textMedium,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -517,12 +561,17 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
               OutlinedButton(
                 onPressed: _pickDirectory,
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   minimumSize: Size.zero,
                 ),
                 child: Text(
                   'Browse…',
-                  style: AppTextStyles.labelSmall.copyWith(color: AppColors.primary),
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
             ],
@@ -539,7 +588,9 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           OutlinedButton(
-            onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
+            onPressed: _isSubmitting
+                ? null
+                : () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
           const SizedBox(width: 12),
@@ -549,7 +600,10 @@ class _YouTubeDownloadDialogState extends ConsumerState<YouTubeDownloadDialog> {
                 ? const SizedBox(
                     width: 14,
                     height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
                 : const Icon(Icons.download, size: 18),
             label: Text(_isSubmitting ? 'Adding…' : 'Download Now'),

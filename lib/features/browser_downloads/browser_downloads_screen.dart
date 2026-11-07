@@ -593,7 +593,8 @@ class _ConnectedCard extends StatelessWidget {
     final diff = now.difference(t);
     if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    return '${t.hour.toString().padLeft(2, '0')}:'
+        '${t.minute.toString().padLeft(2, '0')}';
   }
 }
 
@@ -995,7 +996,9 @@ class _LinkChip extends StatelessWidget {
             url,
           ], mode: ProcessStartMode.detached).ignore();
         } else if (Platform.isMacOS) {
-          Process.start('open', [url], mode: ProcessStartMode.detached).ignore();
+          Process.start('open', [
+            url,
+          ], mode: ProcessStartMode.detached).ignore();
         }
       },
     );
