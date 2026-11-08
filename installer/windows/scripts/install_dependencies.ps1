@@ -45,7 +45,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Normalize string "true"/"false" (Inno Setup passes {TaskSelected(...)} as text,
+# Normalize string "true"/"false" (Inno Setup passes {IsTaskSelected(...)} as text,
 # which expands to Pascal "True"/"False" — case-insensitive match).
 $installFfmpeg = $InstallFfmpeg -match '^true$'
 $installYtdlp = $InstallYtdlp -match '^true$'
