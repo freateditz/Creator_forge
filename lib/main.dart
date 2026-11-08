@@ -40,7 +40,9 @@ Future<void> main() async {
         ),
         center: true,
         title: AppConstants.appName,
-        backgroundColor: Color(0xFF070912), // DesignTokens.bgDeep - solid dark background
+        backgroundColor: Color(
+          0xFF070912,
+        ), // DesignTokens.bgDeep - solid dark background
         skipTaskbar: false,
         titleBarStyle: TitleBarStyle.normal,
       ),
