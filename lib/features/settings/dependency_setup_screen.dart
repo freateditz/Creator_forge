@@ -200,19 +200,19 @@ class DependencySetupScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _ManualInstallLink(
+                    const _ManualInstallLink(
                       name: 'FFmpeg',
                       url: 'https://ffmpeg.org/download.html',
                       description: 'Download the "ffmpeg-git-full.7z" or "ffmpeg-master-latest-win64-gpl-shared.zip"',
                     ),
                     const SizedBox(height: 8),
-                    _ManualInstallLink(
+                    const _ManualInstallLink(
                       name: 'yt-dlp',
                       url: 'https://github.com/yt-dlp/yt-dlp/releases/latest',
                       description: 'Download yt-dlp.exe (Windows) or yt-dlp_macos (macOS)',
                     ),
                     const SizedBox(height: 8),
-                    _ManualInstallLink(
+                    const _ManualInstallLink(
                       name: 'Python',
                       url: 'https://www.python.org/downloads/',
                       description: 'Download Python 3.10+ installer. Check "Add Python to PATH"',
@@ -237,7 +237,7 @@ class DependencySetupScreen extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.info_outline,
                       color: AppColors.success,
                       size: 20,
@@ -532,7 +532,7 @@ class _ManualInstallLink extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         child: Row(
           children: [
-            Icon(Icons.open_in_new, size: 16, color: AppColors.primary),
+            const Icon(Icons.open_in_new, size: 16, color: AppColors.primary),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -556,7 +556,7 @@ class _ManualInstallLink extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.chevron_right, size: 16, color: AppColors.textLow),
+            const Icon(Icons.chevron_right, size: 16, color: AppColors.textLow),
           ],
         ),
       ),

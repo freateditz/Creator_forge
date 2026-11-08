@@ -63,7 +63,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildHeader() {
-    return Row(
+    return const Row(
           children: [
             Expanded(
               child: Column(
@@ -71,17 +71,17 @@ class DashboardScreen extends ConsumerWidget {
                 children: [
                   Text(
                     'Dashboard',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: DesignTokens.textPrimary,
                       fontWeight: FontWeight.w800,
                       fontSize: 32,
                       letterSpacing: -0.8,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
                     'Your creator workspace',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: DesignTokens.textSecondary,
                       fontSize: 15,
                     ),
@@ -250,27 +250,27 @@ class DashboardScreen extends ConsumerWidget {
           padding: EdgeInsets.zero,
           borderRadius: BorderRadius.circular(16),
           child: recent.isEmpty
-              ? Center(
+              ? const Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(48),
+                    padding: EdgeInsets.all(48),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.inbox_outlined,
                           size: 40,
                           color: DesignTokens.textTertiary,
                         ),
-                        const SizedBox(height: 12),
-                        const Text(
+                        SizedBox(height: 12),
+                        Text(
                           'No recent activity',
                           style: TextStyle(
                             color: DesignTokens.textSecondary,
                             fontSize: 14,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
+                        SizedBox(height: 4),
+                        Text(
                           'Downloads and processing jobs will appear here.',
                           style: TextStyle(
                             color: DesignTokens.textTertiary,

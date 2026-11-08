@@ -55,7 +55,7 @@ class _LiquidSidebarState extends State<LiquidSidebar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   double _targetY = 0;
-  double _currentY = 0;
+  final double _currentY = 0;
   int? _activeIndex;
   String? _currentRoute;
 
@@ -176,11 +176,11 @@ class _LiquidSidebarState extends State<LiquidSidebar>
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 gradient: DesignTokens.accentGradient,
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
                     color: DesignTokens.accentCyanGlow,
                     blurRadius: 16,
-                    offset: const Offset(0, 4),
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
@@ -226,7 +226,7 @@ class _LiquidSidebarState extends State<LiquidSidebar>
 
     return Container(
       width: widget.width,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: DesignTokens.bgDeep,
         border: Border(
           right: BorderSide(color: DesignTokens.glassBorder, width: 1),
