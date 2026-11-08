@@ -5,11 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../core/theme/app_colors.dart';
+import '../core/design/beams_background.dart';
+import '../core/design/liquid_sidebar.dart';
+import '../core/design/design_tokens.dart';
 import '../providers/app_providers.dart';
 import '../providers/browser_integration_provider.dart';
 import '../routing/route_paths.dart';
-import 'app_sidebar.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -71,16 +72,138 @@ class _AppShellState extends ConsumerState<AppShell> {
         child: Focus(
           autofocus: true,
           child: Material(
-            color: AppColors.background,
-            child: Row(
+            color: DesignTokens.bgDeep,
+            child: Stack(
               children: [
-                const AppSidebar(),
-                Expanded(child: widget.child),
+                // Animated beam background
+                const BeamsBackground(),
+                // Glass sidebar + content
+                Row(
+                  children: [
+                    _buildSidebar(),
+                    Expanded(child: widget.child),
+                  ],
+                ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSidebar() {
+    return LiquidSidebar(
+      width: 220,
+      borderRadius: 18,
+      logo: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          gradient: DesignTokens.accentGradient,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.bolt, color: Colors.white, size: 20),
+      ),
+      title: const Text(
+        'CreatorForge',
+        style: TextStyle(
+          color: DesignTokens.textPrimary,
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          letterSpacing: -0.3,
+        ),
+      ),
+      sections: [
+        LiquidSidebarSection(
+          label: 'OVERVIEW',
+          items: [
+            LiquidSidebarItem(
+              icon: Icons.dashboard_outlined,
+              activeIcon: Icons.dashboard,
+              label: 'Dashboard',
+              route: RoutePaths.dashboard,
+            ),
+          ],
+        ),
+        LiquidSidebarSection(
+          label: 'DOWNLOADS',
+          items: [
+            LiquidSidebarItem(
+              icon: Icons.download_outlined,
+              activeIcon: Icons.download,
+              label: 'Downloads',
+              route: RoutePaths.downloads,
+            ),
+            LiquidSidebarItem(
+              icon: Icons.play_circle_outline,
+              activeIcon: Icons.play_circle,
+              label: 'YouTube',
+              route: RoutePaths.youtube,
+            ),
+            LiquidSidebarItem(
+              icon: Icons.camera_alt_outlined,
+              activeIcon: Icons.camera_alt,
+              label: 'Instagram',
+              route: RoutePaths.instagram,
+            ),
+            LiquidSidebarItem(
+              icon: Icons.push_pin_outlined,
+              activeIcon: Icons.push_pin,
+              label: 'Pinterest',
+              route: RoutePaths.pinterest,
+            ),
+            LiquidSidebarItem(
+              icon: Icons.extension_outlined,
+              activeIcon: Icons.extension,
+              label: 'Browser',
+              route: RoutePaths.browserDownloads,
+            ),
+          ],
+        ),
+        LiquidSidebarSection(
+          label: 'AUDIO',
+          items: [
+            LiquidSidebarItem(
+              icon: Icons.audio_file_outlined,
+              activeIcon: Icons.audio_file,
+              label: 'Audio Tools',
+              route: RoutePaths.audio,
+            ),
+            LiquidSidebarItem(
+              icon: Icons.graphic_eq,
+              activeIcon: Icons.graphic_eq,
+              label: 'Vocal Separator',
+              route: RoutePaths.vocalSeparator,
+            ),
+          ],
+        ),
+        LiquidSidebarSection(
+          label: 'VISUAL',
+          items: [
+            LiquidSidebarItem(
+              icon: Icons.auto_fix_high_outlined,
+              activeIcon: Icons.auto_fix_high,
+              label: 'Bg Remover',
+              route: RoutePaths.backgroundRemover,
+            ),
+            LiquidSidebarItem(
+              icon: Icons.swap_horiz,
+              activeIcon: Icons.swap_horiz,
+              label: 'Converter',
+              route: RoutePaths.converter,
+            ),
+          ],
+        ),
+      ],
+      footer: [
+        LiquidSidebarItem(
+          icon: Icons.settings_outlined,
+          activeIcon: Icons.settings,
+          label: 'Settings',
+          route: RoutePaths.settings,
+        ),
+      ],
     );
   }
 }

@@ -18,11 +18,11 @@
 ;   3. Copies the compiled native-host exe to {app}\NativeHost\ (if built by CI).
 ;   4. Copies the browser-extension/dist/ directory to {app}\browser-extension\dist\.
 ;   5. Copies the Python host script + PowerShell helper scripts.
-;   6. Runs install_native_host.ps1 post-install to:
-;        a. Prefer the compiled exe; fall back to bat wrapper if Python found.
-;        b. Write the NM manifest with a placeholder origin.
-;        c. Register Chrome + Edge HKCU registry keys using reg.exe /ve.
-;        d. Read back and verify the registry values.
+;   6. Runs install_dependencies.ps1 post-install to:
+;        a. Install FFmpeg (optional, user-selected via checkbox)
+;        b. Install yt-dlp (optional, user-selected via checkbox)
+;        c. Install Python (optional, user-selected via checkbox)
+;        d. Register native messaging host
 ;   7. Creates Start Menu shortcut and optional desktop shortcut.
 ;   8. On uninstall: runs uninstall_native_host.ps1 then removes all files.
 ;
@@ -30,11 +30,11 @@
 ;   Integration, which detects the browser, guides extension loading, and
 ;   updates the registry with the real extension ID automatically.
 ;
-; ── NOT bundled (user must install separately) ────────────────────────────────
-;   - Python 3.10+ interpreter (required for AI features + native host)
-;   - yt-dlp                  (required for video downloading)
-;   - FFmpeg / ffprobe        (required for audio conversion + AI features)
-;   - AI model weights        (installed on-demand from within the app)
+; ── Bundled optional dependencies ──────────────────────────────────────────────
+;   - Python 3.10+ (downloaded from python.org)
+;   - yt-dlp (downloaded from GitHub releases)
+;   - FFmpeg / ffprobe (downloaded from BtbN builds)
+;   - AI model weights (installed on-demand from within the app)
 ;
 ; ── Code signing ─────────────────────────────────────────────────────────────
 ;   Not configured here.  Unsigned builds will trigger Windows SmartScreen.
@@ -94,6 +94,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "install_ffmpeg"; Description: "Install FFmpeg (required for video/audio merging, 4K downloads, AI features)"; GroupDescription: "Optional Dependencies"; Flags: checkedonce
+Name: "install_ytdlp"; Description: "Install yt-dlp (required for downloading from YouTube and 1000+ sites)"; GroupDescription: "Optional Dependencies"; Flags: checkedonce
+Name: "install_python"; Description: "Install Python 3.12 (required for AI vocal separation, background removal, browser integration)"; GroupDescription: "Optional Dependencies"; Flags: unchecked
 
 [Files]
 ; ── Flutter application ───────────────────────────────────────────────────────
@@ -114,10 +117,6 @@ Source: "{#BuildDir}\NativeHost\creator_forge_native_host.exe"; \
   DestDir: "{app}\NativeHost"; \
   Flags: ignoreversion skipifsourcedoesntexist
 
-; ── Bundled binaries (FFmpeg, ffprobe, yt-dlp) ─────────────────────────────────
-Source: "{#BuildDir}\bin\*"; DestDir: "{app}\bin"; \
-  Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-
 ; ── Browser extension ─────────────────────────────────────────────────────────
 ; Built extension files so the in-app wizard can open Explorer to the dist/
 ; folder and guide the user through Load unpacked without needing the source tree.
@@ -126,6 +125,7 @@ Source: "{#ExtDist}\*"; DestDir: "{app}\browser-extension\dist"; \
 
 ; ── Post-install helper scripts ───────────────────────────────────────────────
 ; These are copied to {app}\scripts so [Run]/[UninstallRun] can find them.
+Source: "{#Scripts}\install_dependencies.ps1";  DestDir: "{app}\scripts"; Flags: ignoreversion
 Source: "{#Scripts}\install_native_host.ps1";   DestDir: "{app}\scripts"; Flags: ignoreversion
 Source: "{#Scripts}\uninstall_native_host.ps1"; DestDir: "{app}\scripts"; Flags: ignoreversion
 
@@ -135,7 +135,13 @@ Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}";     Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
-; Register the native messaging host after install.
+; 1. Install optional dependencies (FFmpeg, yt-dlp, Python)
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
+  Parameters: "-ExecutionPolicy Bypass -File ""{app}\scripts\install_dependencies.ps1"" -InstallFfmpeg {#TaskChecked(install_ffmpeg)} -InstallYtdlp {#TaskChecked(install_ytdlp)} -InstallPython {#TaskChecked(install_python)}"; \
+  Flags: runhidden waituntilterminated; \
+  StatusMsg: "Installing optional dependencies..."
+
+; 2. Register the native messaging host after install.
 ; The script finds Python, writes a bat wrapper, writes the NM manifest
 ; (with empty allowed_origins — user must run the script again with their
 ; extension ID), and registers Chrome + Edge HKCU keys.
@@ -159,9 +165,7 @@ Type: filesandordirs; Name: "{userappdata}\CreatorForge\NativeHost"
 [Code]
 // ── Pre-install checks ────────────────────────────────────────────────────────
 //
-// We cannot check for yt-dlp, FFmpeg, or specific Python packages here because
-// Inno Setup runs in a constrained environment.  We check only for Python 3
-// to give an actionable warning about AI features being unavailable.
+// We check for Python 3 to give an actionable warning about AI features being unavailable.
 // The main app shows per-feature availability in its Settings screen.
 
 function PythonAvailable(): Boolean;
@@ -171,7 +175,7 @@ begin
   // Try 'python' first (python.org MSI sets this), then 'py' (Python Launcher).
   Result := Exec(ExpandConstant('{sys}\cmd.exe'), '/C python --version',
                  '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-             and (ResultCode = 0);
+           and (ResultCode = 0);
   if not Result then
     Result := Exec(ExpandConstant('{sys}\cmd.exe'), '/C py -3 --version',
                    '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
@@ -192,8 +196,9 @@ begin
       + '  - AI background removal' + #13#10
       + '  - Browser extension integration' + #13#10
       + #13#10
-      + 'You can install Python from https://python.org and install these' + #13#10
-      + 'features later from the CreatorForge Settings screen.' + #13#10
+      + 'You can install Python during this setup (check "Install Python 3.12")' + #13#10
+      + 'or install it later from https://python.org and enable these' + #13#10
+      + 'features from the CreatorForge Settings screen.' + #13#10
       + #13#10
       + 'Continue without Python?',
       mbConfirmation, MB_YESNO

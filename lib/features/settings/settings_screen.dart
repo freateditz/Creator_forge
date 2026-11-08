@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/logging/app_logger.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../providers/app_providers.dart';
+import '../../routing/route_paths.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -19,6 +21,7 @@ class SettingsScreen extends ConsumerWidget {
     final settingsAsync = ref.watch(appSettingsProvider);
     final ffmpegVersion = ref.watch(ffmpegVersionProvider);
     final ytdlpVersion = ref.watch(ytdlpVersionProvider);
+    final pythonVersion = ref.watch(pythonVersionProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -159,7 +162,9 @@ class SettingsScreen extends ConsumerWidget {
                         versionAsync: ffmpegVersion,
                         icon: Icons.settings_applications_outlined,
                         provisioningProvider: ffmpegProvisioningProvider,
-                        supportsAutoInstall: Platform.isWindows,
+                        supportsAutoInstall: Platform.isWindows || Platform.isMacOS,
+                        description:
+                            'Required for video/audio merging, 4K downloads, audio conversion, and AI features.',
                         installHint: Platform.isWindows
                             ? null
                             : 'Install via: brew install ffmpeg',
@@ -171,7 +176,20 @@ class SettingsScreen extends ConsumerWidget {
                         provisioningProvider: ytdlpProvisioningProvider,
                         supportsAutoInstall:
                             Platform.isWindows || Platform.isMacOS,
-                        installHint: null,
+                        description:
+                            'Required for downloading from YouTube and 1000+ supported sites.',
+                      ),
+                      _ProvisionableTile(
+                        label: 'Python 3.10+',
+                        versionAsync: pythonVersion,
+                        icon: Icons.code_outlined,
+                        provisioningProvider: pythonProvisioningProvider,
+                        supportsAutoInstall: Platform.isWindows,
+                        description:
+                            'Required for AI vocal separation, background removal, and browser extension integration.',
+                        installHint: Platform.isWindows
+                            ? null
+                            : 'Install from python.org or via package manager',
                       ),
                     ],
                   ),
@@ -201,6 +219,33 @@ class SettingsScreen extends ConsumerWidget {
                               },
                               icon: const Icon(Icons.copy_outlined, size: 16),
                               label: const Text('Copy Diagnostic Info'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Icon(Icons.build_outlined, size: 18, color: AppColors.textMedium),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Advanced Dependency Setup',
+                                style: AppTextStyles.bodyMedium,
+                              ),
+                            ),
+                            FilledButton.tonal(
+                              onPressed: () => context.go(RoutePaths.dependencySetup),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                minimumSize: Size.zero,
+                              ),
+                              child: Text('Open', style: AppTextStyles.labelSmall),
                             ),
                           ],
                         ),
@@ -483,6 +528,7 @@ class _ProvisionableTile extends ConsumerWidget {
   final NotifierProvider<dynamic, ProvisioningState> provisioningProvider;
   final bool supportsAutoInstall;
   final String? installHint;
+  final String? description;
 
   const _ProvisionableTile({
     required this.label,
@@ -491,6 +537,7 @@ class _ProvisionableTile extends ConsumerWidget {
     required this.provisioningProvider,
     required this.supportsAutoInstall,
     this.installHint,
+    this.description,
   });
 
   @override
@@ -509,6 +556,8 @@ class _ProvisionableTile extends ConsumerWidget {
       data: (v) => v != null ? 'v$v — installed' : 'Not found',
     );
 
+    final canInstall = supportsAutoInstall && !isInstalled;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
@@ -518,7 +567,23 @@ class _ProvisionableTile extends ConsumerWidget {
             children: [
               Icon(icon, size: 18, color: AppColors.textMedium),
               const SizedBox(width: 12),
-              Expanded(child: Text(label, style: AppTextStyles.bodyMedium)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: AppTextStyles.bodyMedium),
+                    if (description != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        description!,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textMedium,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
               if (statusColor != null)
                 Container(
                   width: 8,
@@ -535,25 +600,21 @@ class _ProvisionableTile extends ConsumerWidget {
                   color: statusColor ?? AppColors.textMedium,
                 ),
               ),
-              if (!isInstalled &&
-                  supportsAutoInstall &&
-                  provisioning.status == ProvisioningStatus.idle) ...[
+              if (canInstall && provisioning.status == ProvisioningStatus.idle) ...[
                 const SizedBox(width: 10),
-                OutlinedButton(
+                FilledButton.tonal(
                   onPressed: () =>
                       ref.read(provisioningProvider.notifier).provision(),
-                  style: OutlinedButton.styleFrom(
+                  style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
+                      horizontal: 12,
+                      vertical: 8,
                     ),
                     minimumSize: Size.zero,
                   ),
                   child: Text(
-                    'Auto-install',
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: AppColors.primary,
-                    ),
+                    'Install',
+                    style: AppTextStyles.labelSmall,
                   ),
                 ),
               ],
@@ -569,6 +630,13 @@ class _ProvisionableTile extends ConsumerWidget {
               ],
             ],
           ),
+          if (description != null && !isInstalled) ...[
+            const SizedBox(height: 4),
+            Text(
+              description!,
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMedium),
+            ),
+          ],
           if (provisioning.status == ProvisioningStatus.downloading) ...[
             const SizedBox(height: 8),
             ClipRRect(

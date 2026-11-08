@@ -88,6 +88,8 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
   Widget _buildDependencyWarning() {
     final ytdlpAsync = ref.watch(ytdlpAvailableProvider);
     final ffmpegAsync = ref.watch(ffmpegAvailableProvider);
+    final ytdlpProvisioning = ref.watch(ytdlpProvisioningProvider);
+    final ffmpegProvisioning = ref.watch(ffmpegProvisioningProvider);
 
     return Column(
       children: [
@@ -96,36 +98,16 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
           error: (_, _) => const SizedBox.shrink(),
           data: (available) {
             if (available) return const SizedBox.shrink();
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.warningSurface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.warning.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.warning_amber_outlined,
-                    color: AppColors.warning,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'yt-dlp is not installed. '
-                      'Install it with: pip install yt-dlp',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.warning,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(duration: 300.ms);
+            return _buildActionableWarning(
+              title: 'yt-dlp not installed',
+              message: 'Required for downloading from YouTube and 1000+ sites.',
+              icon: Icons.warning_amber_outlined,
+              color: AppColors.warning,
+              isInstalling: ytdlpProvisioning.status == ProvisioningStatus.downloading,
+              progress: ytdlpProvisioning.progress,
+              onInstall: () => ref.read(ytdlpProvisioningProvider.notifier).provision(),
+              canAutoInstall: Platform.isWindows || Platform.isMacOS,
+            );
           },
         ),
         ffmpegAsync.when(
@@ -133,40 +115,110 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
           error: (_, _) => const SizedBox.shrink(),
           data: (available) {
             if (available) return const SizedBox.shrink();
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.warningSurface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.warning.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    color: AppColors.warning,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'FFmpeg is not installed. YouTube HD/4K videos '
-                      'require FFmpeg to merge video and audio streams.',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.warning,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(duration: 300.ms);
+            return _buildActionableWarning(
+              title: 'FFmpeg not installed',
+              message: 'Required for HD/4K video merging, audio conversion, and AI features.',
+              icon: Icons.info_outline,
+              color: AppColors.warning,
+              isInstalling: ffmpegProvisioning.status == ProvisioningStatus.downloading,
+              progress: ffmpegProvisioning.progress,
+              onInstall: () => ref.read(ffmpegProvisioningProvider.notifier).provision(),
+              canAutoInstall: Platform.isWindows || Platform.isMacOS,
+            );
           },
         ),
       ],
     );
+  }
+
+  Widget _buildActionableWarning({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color color,
+    required bool isInstalling,
+    required double progress,
+    required VoidCallback onInstall,
+    required bool canAutoInstall,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: color.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTextStyles.labelMedium.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      message,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: color.withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (canAutoInstall && !isInstalling) ...[
+                const SizedBox(width: 10),
+                FilledButton.tonal(
+                  onPressed: onInstall,
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    minimumSize: Size.zero,
+                    backgroundColor: color.withValues(alpha: 0.2),
+                    foregroundColor: color,
+                  ),
+                  child: Text('Install', style: AppTextStyles.labelSmall),
+                ),
+              ],
+            ],
+          ),
+          if (isInstalling) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: progress > 0 ? progress : null,
+                minHeight: 4,
+                backgroundColor: color.withValues(alpha: 0.2),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              progress > 0
+                  ? 'Downloading… ${(progress * 100).toStringAsFixed(0)}%'
+                  : 'Downloading…',
+              style: AppTextStyles.caption.copyWith(color: color),
+            ),
+          ],
+        ],
+      ),
+    ).animate().fadeIn(duration: 300.ms);
   }
 
   Widget _buildUrlInput(YouTubeState ytState) {

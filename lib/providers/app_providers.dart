@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config/app_config.dart';
@@ -288,6 +290,35 @@ final ytdlpVersionProvider = FutureProvider<String?>((ref) async {
   return YtDlpLocator.instance.getVersion();
 });
 
+// Python version detection
+final pythonVersionProvider = FutureProvider<String?>((ref) async {
+  try {
+    final result = await Process.run('python', ['--version'], runInShell: false);
+    if (result.exitCode == 0) {
+      final out = result.stdout as String;
+      final match = RegExp(r'Python (\d+\.\d+\.\d+)').firstMatch(out);
+      return match?.group(1);
+    }
+  } catch (_) {}
+  try {
+    final result = await Process.run('python3', ['--version'], runInShell: false);
+    if (result.exitCode == 0) {
+      final out = result.stdout as String;
+      final match = RegExp(r'Python (\d+\.\d+\.\d+)').firstMatch(out);
+      return match?.group(1);
+    }
+  } catch (_) {}
+  try {
+    final result = await Process.run('py', ['-3', '--version'], runInShell: false);
+    if (result.exitCode == 0) {
+      final out = result.stdout as String;
+      final match = RegExp(r'Python (\d+\.\d+\.\d+)').firstMatch(out);
+      return match?.group(1);
+    }
+  } catch (_) {}
+  return null;
+});
+
 // ── Dependency provisioning ──────────────────────────────────────────────────
 
 final dependencyProvisionerProvider = Provider<DependencyProvisioner>((ref) {
@@ -395,4 +426,52 @@ class FfmpegProvisioningNotifier extends Notifier<ProvisioningState> {
 final ffmpegProvisioningProvider =
     NotifierProvider<FfmpegProvisioningNotifier, ProvisioningState>(
       FfmpegProvisioningNotifier.new,
+    );
+
+class PythonProvisioningNotifier extends Notifier<ProvisioningState> {
+  @override
+  ProvisioningState build() => const ProvisioningState();
+
+  Future<void> provision() async {
+    state = const ProvisioningState(status: ProvisioningStatus.downloading);
+    try {
+      // Python provisioning on Windows - download and install portable Python
+      // This is a placeholder - full implementation would use the dependency provisioner
+      // For now, we show a message directing to python.org
+      if (!Platform.isWindows) {
+        throw UnsupportedError(
+          'Automatic Python provisioning is only supported on Windows. '
+          'Please install Python from https://python.org',
+        );
+      }
+
+      // Use the dependency provisioner to install Python
+      await ref
+          .read(dependencyProvisionerProvider)
+          .provisionPython(
+            onProgress: (p) => state = state.copyWith(
+              status: ProvisioningStatus.downloading,
+              progress: p,
+            ),
+          );
+
+      ref.invalidate(pythonVersionProvider);
+      state = const ProvisioningState(
+        status: ProvisioningStatus.done,
+        progress: 1,
+      );
+    } catch (e) {
+      state = ProvisioningState(
+        status: ProvisioningStatus.error,
+        errorMessage: e.toString(),
+      );
+    }
+  }
+
+  void reset() => state = const ProvisioningState();
+}
+
+final pythonProvisioningProvider =
+    NotifierProvider<PythonProvisioningNotifier, ProvisioningState>(
+      PythonProvisioningNotifier.new,
     );

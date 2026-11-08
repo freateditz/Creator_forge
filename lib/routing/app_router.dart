@@ -10,6 +10,7 @@ import '../features/downloads/downloads_screen.dart';
 import '../features/instagram/instagram_screen.dart';
 import '../features/pinterest/pinterest_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/settings/dependency_setup_screen.dart';
 import '../features/vocal_separator/vocal_separator_screen.dart';
 import '../features/youtube/youtube_screen.dart';
 import '../widgets/app_shell.dart';
@@ -76,6 +77,11 @@ final appRouter = GoRouter(
           path: RoutePaths.settings,
           pageBuilder: (context, state) =>
               _noTransition(state, const SettingsScreen()),
+        ),
+        GoRoute(
+          path: RoutePaths.dependencySetup,
+          pageBuilder: (context, state) =>
+              _noTransition(state, const DependencySetupScreen()),
         ),
       ],
     ),

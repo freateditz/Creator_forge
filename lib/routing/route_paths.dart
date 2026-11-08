@@ -12,4 +12,5 @@ class RoutePaths {
   static const converter = '/converter';
   static const browserDownloads = '/browser-downloads';
   static const settings = '/settings';
+  static const dependencySetup = '/settings/dependencies';
 }

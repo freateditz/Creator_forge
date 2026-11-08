@@ -26,6 +26,10 @@ class DependencyProvisioner {
   static const _ffmpegWindowsZipUrl =
       'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip';
 
+  // Python for Windows — official embeddable package (minimal, no installer needed)
+  static const _pythonWindowsUrl =
+      'https://www.python.org/ftp/python/3.12.8/python-3.12.8-embed-amd64.zip';
+
   DependencyProvisioner({required this.binDir});
 
   // ── yt-dlp ─────────────────────────────────────────────────────────────────
@@ -227,5 +231,130 @@ class DependencyProvisioner {
     try {
       await Directory(extractDir).delete(recursive: true);
     } catch (_) {}
+  }
+
+  // ── Python ───────────────────────────────────────────────────────────────────
+
+  String get pythonDir => p.join(binDir, 'python');
+
+  bool get isPythonProvisioned => File(p.join(pythonDir, 'python.exe')).existsSync();
+
+  /// Downloads and extracts the Python embeddable package to [binDir]/python.
+  ///
+  /// This provides a minimal Python environment suitable for running the native
+  /// messaging host and AI workers. The embeddable package doesn't include pip
+  /// by default, but we can bootstrap it.
+  ///
+  /// [onProgress] receives 0.0–1.0 as download progresses.
+  Future<String> provisionPython({
+    void Function(double progress)? onProgress,
+  }) async {
+    if (!Platform.isWindows) {
+      throw UnsupportedError(
+        'Automatic Python provisioning is only supported on Windows. '
+        'Please install Python from https://python.org',
+      );
+    }
+
+    final zipPath = p.join(binDir, '_python_download.zip');
+    _log.info('Downloading Python embeddable package from: $_pythonWindowsUrl');
+    await _downloadFile(
+      url: _pythonWindowsUrl,
+      destPath: zipPath,
+      onProgress: onProgress,
+    );
+
+    _log.info('Extracting Python…');
+    await _extractPythonFromZip(zipPath: zipPath, destDir: binDir);
+
+    // Clean up zip after extraction
+    try {
+      await File(zipPath).delete();
+    } catch (_) {}
+
+    // Bootstrap pip (the embeddable package doesn't include it by default)
+    await _bootstrapPip();
+
+    if (!File(p.join(pythonDir, 'python.exe')).existsSync()) {
+      throw StateError(
+        'Python extraction completed but python.exe was not found at $pythonDir',
+      );
+    }
+
+    _log.info('Python provisioned at: $pythonDir');
+    return pythonDir;
+  }
+
+  Future<void> _extractPythonFromZip({
+    required String zipPath,
+    required String destDir,
+  }) async {
+    final pythonDirPath = p.join(destDir, 'python');
+
+    // Use Dart's built-in zip support or PowerShell
+    final result = await Process.run('powershell', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      'Expand-Archive -LiteralPath "${zipPath.replaceAll("'", "''")}" '
+          '-DestinationPath "${pythonDirPath.replaceAll("'", "''")}" -Force',
+    ]);
+
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        'powershell',
+        [],
+        'Expand-Archive failed: ${result.stderr}',
+        result.exitCode,
+      );
+    }
+
+    // The embeddable package extracts directly to python/ directory
+    // Verify python.exe exists
+    final pythonExe = p.join(pythonDirPath, 'python.exe');
+    if (!File(pythonExe).existsSync()) {
+      // Try one level deeper
+      final dirs = Directory(pythonDirPath).listSync().whereType<Directory>().toList();
+      for (final d in dirs) {
+        final exe = p.join(d.path, 'python.exe');
+        if (File(exe).existsSync()) {
+          // Move contents up
+          for (final entry in Directory(d.path).listSync()) {
+            await entry.rename(p.join(pythonDirPath, p.basename(entry.path)));
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  Future<void> _bootstrapPip() async {
+    // The embeddable package includes a _pth file that controls sys.path
+    // We need to ensure pip can be bootstrapped
+    final pythonExe = p.join(pythonDir, 'python.exe');
+    final getPipUrl = 'https://bootstrap.pypa.io/get-pip.py';
+    final getPipPath = p.join(pythonDir, 'get-pip.py');
+
+    try {
+      _log.info('Bootstrapping pip…');
+      await _downloadFile(url: getPipUrl, destPath: getPipPath);
+
+      // Run get-pip.py
+      final result = await Process.run(pythonExe, [getPipPath], runInShell: false);
+      if (result.exitCode != 0) {
+        _log.warning('pip bootstrap failed: ${result.stderr}');
+        // Don't throw - pip is optional for our use case
+      } else {
+        _log.info('pip bootstrapped successfully');
+      }
+
+      // Clean up
+      try {
+        await File(getPipPath).delete();
+      } catch (_) {}
+    } catch (e) {
+      _log.warning('Could not bootstrap pip: $e');
+      // Non-fatal
+    }
   }
 }

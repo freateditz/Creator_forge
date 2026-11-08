@@ -3,13 +3,11 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_text_styles.dart';
+import '../../core/design/design_tokens.dart';
+import '../../core/design/glass_pane.dart';
 import '../../models/download_task.dart';
 import '../../providers/app_providers.dart';
 import '../../routing/route_paths.dart';
-import 'widgets/quick_action_card.dart';
-import 'widgets/stat_card.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -40,7 +38,7 @@ class DashboardScreen extends ConsumerWidget {
         audioJobs.where((j) => !j.isTerminal).length;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: DesignTokens.bgApp,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(28),
         child: Column(
@@ -71,12 +69,19 @@ class DashboardScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Dashboard', style: AppTextStyles.displayMedium),
+                  Text('Dashboard',
+                      style: const TextStyle(
+                        color: DesignTokens.textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 32,
+                        letterSpacing: -0.8,
+                      )),
                   const SizedBox(height: 4),
                   Text(
                     'Your creator workspace',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textMedium,
+                    style: const TextStyle(
+                      color: DesignTokens.textSecondary,
+                      fontSize: 15,
                     ),
                   ),
                 ],
@@ -114,38 +119,38 @@ class DashboardScreen extends ConsumerWidget {
     return Row(
           children: [
             Expanded(
-              child: StatCard(
+              child: _GlassStatCard(
                 label: 'Total Downloads',
                 value: '$totalDownloads',
                 icon: Icons.download_done,
-                iconColor: AppColors.primary,
+                iconColor: DesignTokens.accentCyan,
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: StatCard(
+              child: _GlassStatCard(
                 label: 'Active Downloads',
                 value: '$activeDownloads',
                 icon: Icons.downloading,
-                iconColor: AppColors.statusDownloading,
+                iconColor: DesignTokens.warning,
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: StatCard(
+              child: _GlassStatCard(
                 label: 'Processing Jobs',
                 value: '$activeProcessing',
                 icon: Icons.tune,
-                iconColor: AppColors.warning,
+                iconColor: DesignTokens.accentViolet,
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: StatCard(
+              child: _GlassStatCard(
                 label: 'Storage Used',
                 value: _formatBytes(dirSizeBytes),
                 icon: Icons.folder_outlined,
-                iconColor: AppColors.secondary,
+                iconColor: DesignTokens.accentPink,
               ),
             ),
           ],
@@ -159,7 +164,12 @@ class DashboardScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Quick Actions', style: AppTextStyles.headingMedium),
+        const Text('Quick Actions',
+            style: TextStyle(
+              color: DesignTokens.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+            )),
         const SizedBox(height: 14),
         GridView.count(
           crossAxisCount: 3,
@@ -169,46 +179,46 @@ class DashboardScreen extends ConsumerWidget {
           mainAxisSpacing: 14,
           childAspectRatio: 2.4,
           children: [
-            QuickActionCard(
+            _GlassActionCard(
               icon: Icons.play_circle_outline,
               label: 'Download Video',
               subtitle: 'YouTube, Instagram & more',
-              accent: AppColors.primary,
+              accent: DesignTokens.accentCyan,
               onTap: () => context.go(RoutePaths.youtube),
             ),
-            QuickActionCard(
+            _GlassActionCard(
               icon: Icons.audiotrack,
               label: 'Extract Audio',
               subtitle: 'Pull audio from any video',
-              accent: const Color(0xFF22D3EE),
+              accent: DesignTokens.accentCyan,
               onTap: () => context.go(RoutePaths.audio),
             ),
-            QuickActionCard(
+            _GlassActionCard(
               icon: Icons.graphic_eq,
               label: 'Separate Vocals',
               subtitle: 'Isolate vocals & instrumentals',
-              accent: const Color(0xFFA78BFA),
+              accent: DesignTokens.accentViolet,
               onTap: () => context.go(RoutePaths.vocalSeparator),
             ),
-            QuickActionCard(
+            _GlassActionCard(
               icon: Icons.auto_fix_high_outlined,
               label: 'Remove Background',
               subtitle: 'AI background removal',
-              accent: AppColors.secondary,
+              accent: DesignTokens.accentPink,
               onTap: () => context.go(RoutePaths.backgroundRemover),
             ),
-            QuickActionCard(
+            _GlassActionCard(
               icon: Icons.swap_horiz,
               label: 'Convert Media',
               subtitle: 'Video, audio & image formats',
-              accent: const Color(0xFF34D399),
+              accent: DesignTokens.success,
               onTap: () => context.go(RoutePaths.converter),
             ),
-            QuickActionCard(
+            _GlassActionCard(
               icon: Icons.extension_outlined,
               label: 'Browser Downloads',
               subtitle: 'Download from any site',
-              accent: const Color(0xFFFBBF24),
+              accent: DesignTokens.warning,
               onTap: () => context.go(RoutePaths.browserDownloads),
             ),
           ],
@@ -223,14 +233,16 @@ class DashboardScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Recent Activity', style: AppTextStyles.headingMedium),
+        const Text('Recent Activity',
+            style: TextStyle(
+              color: DesignTokens.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+            )),
         const SizedBox(height: 14),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
+        GlassPane(
+          padding: EdgeInsets.zero,
+          borderRadius: BorderRadius.circular(16),
           child: recent.isEmpty
               ? Center(
                   child: Padding(
@@ -241,19 +253,23 @@ class DashboardScreen extends ConsumerWidget {
                         const Icon(
                           Icons.inbox_outlined,
                           size: 40,
-                          color: AppColors.textLow,
+                          color: DesignTokens.textTertiary,
                         ),
                         const SizedBox(height: 12),
-                        Text(
+                        const Text(
                           'No recent activity',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textMedium,
+                          style: TextStyle(
+                            color: DesignTokens.textSecondary,
+                            fontSize: 14,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
+                        const Text(
                           'Downloads and processing jobs will appear here.',
-                          style: AppTextStyles.bodySmall,
+                          style: TextStyle(
+                            color: DesignTokens.textTertiary,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
@@ -262,9 +278,14 @@ class DashboardScreen extends ConsumerWidget {
               : Column(
                   children: [
                     for (int i = 0; i < recent.length; i++) ...[
-                      _RecentDownloadRow(task: recent[i]),
+                      _GlassRecentDownloadRow(task: recent[i]),
                       if (i < recent.length - 1)
-                        const Divider(height: 1, indent: 16, endIndent: 16),
+                        const Divider(
+                          height: 1,
+                          indent: 16,
+                          endIndent: 16,
+                          color: DesignTokens.glassBorder,
+                        ),
                     ],
                   ],
                 ),
@@ -274,19 +295,156 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _RecentDownloadRow extends StatelessWidget {
+class _GlassStatCard extends StatelessWidget {
+  const _GlassStatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.iconColor,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassPane(
+      padding: const EdgeInsets.all(16),
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: iconColor),
+              ),
+              const Spacer(),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              color: DesignTokens.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 24,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(
+              color: DesignTokens.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GlassActionCard extends StatelessWidget {
+  const _GlassActionCard({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onTap,
+        child: GlassPane(
+          padding: const EdgeInsets.all(14),
+          borderRadius: BorderRadius.circular(14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      accent.withValues(alpha: 0.2),
+                      accent.withValues(alpha: 0.05),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(icon, size: 20, color: accent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: DesignTokens.textPrimary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: DesignTokens.textTertiary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassRecentDownloadRow extends StatelessWidget {
   final DownloadTask task;
-  const _RecentDownloadRow({required this.task});
+  const _GlassRecentDownloadRow({required this.task});
 
   @override
   Widget build(BuildContext context) {
     final statusColor = switch (task.status) {
-      DownloadStatus.completed => AppColors.statusCompleted,
-      DownloadStatus.failed => AppColors.statusFailed,
-      DownloadStatus.cancelled => AppColors.statusCancelled,
-      DownloadStatus.downloading ||
-      DownloadStatus.merging => AppColors.statusDownloading,
-      _ => AppColors.statusQueued,
+      DownloadStatus.completed => DesignTokens.success,
+      DownloadStatus.failed => DesignTokens.error,
+      DownloadStatus.cancelled => DesignTokens.warning,
+      DownloadStatus.downloading || DownloadStatus.merging =>
+        DesignTokens.info,
+      _ => DesignTokens.warning,
     };
 
     final statusLabel = switch (task.status) {
@@ -316,14 +474,21 @@ class _RecentDownloadRow extends StatelessWidget {
           Expanded(
             child: Text(
               task.title ?? task.url,
-              style: AppTextStyles.bodySmall,
+              style: const TextStyle(
+                color: DesignTokens.textPrimary,
+                fontSize: 13,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 12),
           Text(
             statusLabel,
-            style: AppTextStyles.caption.copyWith(color: statusColor),
+            style: TextStyle(
+              color: statusColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
