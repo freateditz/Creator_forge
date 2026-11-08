@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/design/design_tokens.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../models/download_task.dart';
@@ -51,7 +52,7 @@ class _BrowserDownloadsScreenState
     final allTasksAsync = ref.watch(downloadTasksProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: DesignTokens.bgDeep,
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -427,7 +428,7 @@ class _BrowserTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primarySurface : AppColors.background,
+          color: isSelected ? AppColors.primarySurface : DesignTokens.bgDeep,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -1157,7 +1158,7 @@ class _ManualStep extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.background,
+                      color: DesignTokens.bgDeep,
                       borderRadius: BorderRadius.circular(4),
                       border: Border.all(color: AppColors.border),
                     ),

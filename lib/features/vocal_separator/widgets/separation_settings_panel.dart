@@ -1,6 +1,7 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/design/design_tokens.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/separation_request.dart';
@@ -94,7 +95,7 @@ class _FilePicker extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: DesignTokens.bgDeep,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: hasFile
@@ -213,7 +214,7 @@ class _ToggleChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? AppColors.primary.withValues(alpha: 0.15)
-              : AppColors.background,
+              : DesignTokens.bgDeep,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected ? AppColors.primary : AppColors.border,

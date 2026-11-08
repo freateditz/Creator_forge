@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/design/design_tokens.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
@@ -24,7 +25,7 @@ class SettingsScreen extends ConsumerWidget {
     final pythonVersion = ref.watch(pythonVersionProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: DesignTokens.bgDeep,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(28),
         child: Column(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../design/design_tokens.dart';
 import 'app_colors.dart';
 import 'app_text_styles.dart';
 
@@ -10,7 +11,8 @@ class AppTheme {
   static ThemeData get dark {
     final base = ThemeData.dark(useMaterial3: true);
     return base.copyWith(
-      scaffoldBackgroundColor: AppColors.background,
+      // Use DesignTokens.bgDeep to match window manager background and AppShell
+      scaffoldBackgroundColor: DesignTokens.bgDeep,
       colorScheme: const ColorScheme.dark(
         surface: AppColors.surface,
         surfaceContainerHighest: AppColors.surfaceElevated,

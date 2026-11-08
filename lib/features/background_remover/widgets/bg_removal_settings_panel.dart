@@ -1,6 +1,7 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/design/design_tokens.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../models/bg_removal_request.dart';
@@ -148,7 +149,7 @@ class _ImagePicker extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: DesignTokens.bgDeep,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: hasFiles
@@ -247,7 +248,7 @@ class _ModelSelector extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: selected ? AppColors.primarySurface : AppColors.background,
+              color: selected ? AppColors.primarySurface : DesignTokens.bgDeep,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: selected
@@ -340,7 +341,7 @@ class _AdvancedOptions extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: DesignTokens.bgDeep,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border),
       ),

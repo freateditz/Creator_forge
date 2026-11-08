@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/design/design_tokens.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../models/separation_job.dart';
@@ -54,7 +55,7 @@ class _VocalSeparatorScreenState extends ConsumerState<VocalSeparatorScreen> {
         false;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: DesignTokens.bgDeep,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

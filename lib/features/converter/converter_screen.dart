@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
+import '../../core/design/design_tokens.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../providers/app_providers.dart';
@@ -185,7 +186,7 @@ class _ConverterScreenState extends ConsumerState<ConverterScreen> {
     final ffmpegAsync = ref.watch(ffmpegAvailableProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: DesignTokens.bgDeep,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(28),
         child: Column(

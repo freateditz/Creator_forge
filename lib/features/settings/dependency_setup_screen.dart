@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/design/design_tokens.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../providers/app_providers.dart';
@@ -29,7 +30,7 @@ class DependencySetupScreen extends ConsumerWidget {
         pythonVersion.valueOrNull != null;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: DesignTokens.bgDeep,
       appBar: AppBar(
         title: Text('Dependency Setup', style: AppTextStyles.headingLarge),
         backgroundColor: AppColors.surface,
