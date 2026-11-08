@@ -137,7 +137,7 @@ Name: "{autodesktop}\{#AppName}";     Filename: "{app}\{#AppExeName}"; Tasks: de
 [Run]
 ; 1. Install optional dependencies (FFmpeg, yt-dlp, Python)
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
-  Parameters: "-ExecutionPolicy Bypass -File ""{app}\scripts\install_dependencies.ps1"" -InstallFfmpeg {IsTaskSelected(install_ffmpeg)} -InstallYtdlp {IsTaskSelected(install_ytdlp)} -InstallPython {IsTaskSelected(install_python)}"; \
+  Parameters: "-ExecutionPolicy Bypass -File ""{app}\scripts\install_dependencies.ps1"" -InstallFfmpeg {code:GetTaskSelected|install_ffmpeg} -InstallYtdlp {code:GetTaskSelected|install_ytdlp} -InstallPython {code:GetTaskSelected|install_python}"; \
   Flags: runhidden waituntilterminated; \
   StatusMsg: "Installing optional dependencies..."
 
@@ -163,6 +163,19 @@ Type: filesandordirs; Name: "{userappdata}\CreatorForge\NativeHost"
 ; is intentionally preserved on uninstall.
 
 [Code]
+// ── Task selection helper ─────────────────────────────────────────────────────
+// The PowerShell dependency installer expects "true"/"false" strings, so we
+// wrap the Pascal IsTaskSelected() function in a {code:...} constant that
+// expands to the lowercase string the script compares against.
+
+function GetTaskSelected(Param: String): String;
+begin
+  if IsTaskSelected(Param) then
+    Result := 'true'
+  else
+    Result := 'false';
+end;
+
 // ── Pre-install checks ────────────────────────────────────────────────────────
 //
 // We check for Python 3 to give an actionable warning about AI features being unavailable.
