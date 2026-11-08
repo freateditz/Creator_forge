@@ -39,6 +39,16 @@ jobs:
       - name: macOS debug build
         run: flutter build macos --debug
 
+      - name: macOS release build
+        run: flutter build macos --release
+
+      - name: Create macOS DMG
+        run: |
+          APP_PATH="build/macos/Build/Products/Release/creator_forge.app"
+          DMG_NAME="CreatorForge-1.0.0-macOS.dmg"
+          hdiutil create -volname "CreatorForge" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_NAME"
+          ls -la "$DMG_NAME"
+
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -67,3 +77,17 @@ jobs:
 
       - name: Native host – e2e tests
         run: python3 native-host/test_e2e.py
+
+      - name: Upload macOS Debug build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CreatorForge-macOS-Debug
+          path: build/macos/Build/Products/Debug/creator_forge.app/
+          retention-days: 7
+
+      - name: Upload macOS Release DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CreatorForge-macOS-DMG
+          path: CreatorForge-1.0.0-macOS.dmg
+          retention-days: 7
