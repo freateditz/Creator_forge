@@ -4,10 +4,20 @@ import FlutterMacOS
 @main
 class AppDelegate: FlutterAppDelegate {
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-    return true
+    return false // Change to false to keep the app running in the background
   }
 
-  override func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
-    return true
+  // Add this to handle reopening the app if it was hidden or closed
+  override func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+      if !flag {
+          for window in NSApp.windows {
+              if !window.isVisible {
+                  window.setIsVisible(true)
+              }
+              window.makeKeyAndOrderFront(self)
+              NSApp.activate(ignoringOtherApps: true)
+          }
+      }
+      return true
   }
 }
