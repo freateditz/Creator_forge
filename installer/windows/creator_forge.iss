@@ -137,7 +137,7 @@ Name: "{autodesktop}\{#AppName}";     Filename: "{app}\{#AppExeName}"; Tasks: de
 [Run]
 ; 1. Install optional dependencies (FFmpeg, yt-dlp, Python)
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; \
-  Parameters: "-ExecutionPolicy Bypass -File ""{app}\scripts\install_dependencies.ps1"" -InstallFfmpeg {TaskChecked(install_ffmpeg)} -InstallYtdlp {TaskChecked(install_ytdlp)} -InstallPython {TaskChecked(install_python)}"; \
+  Parameters: "-ExecutionPolicy Bypass -File ""{app}\scripts\install_dependencies.ps1"" -InstallFfmpeg {TaskSelected(install_ffmpeg)} -InstallYtdlp {TaskSelected(install_ytdlp)} -InstallPython {TaskSelected(install_python)}"; \
   Flags: runhidden waituntilterminated; \
   StatusMsg: "Installing optional dependencies..."
 

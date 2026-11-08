@@ -45,10 +45,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Normalize string "true"/"false" (Inno Setup passes {#TaskChecked(...)} as text)
-$installFfmpeg = $InstallFfmpeg -eq "true"
-$installYtdlp = $InstallYtdlp -eq "true"
-$installPython = $InstallPython -eq "true"
+# Normalize string "true"/"false" (Inno Setup passes {TaskSelected(...)} as text,
+# which expands to Pascal "True"/"False" — case-insensitive match).
+$installFfmpeg = $InstallFfmpeg -match '^true$'
+$installYtdlp = $InstallYtdlp -match '^true$'
+$installPython = $InstallPython -match '^true$'
 
 # ── Logging helper ────────────────────────────────────────────────────────────
 function Write-Log {
