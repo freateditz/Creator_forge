@@ -13,8 +13,10 @@ class DesignTokens {
   // ── Backgrounds ────────────────────────────────────────────────────────────
   /// Deepest layer — the app window behind everything.
   static const Color bgDeep = Color(0xFF070912);
+
   /// Main app background (slightly lighter than deep, subtle vertical gradient).
   static const Color bgApp = Color(0xFF0B0E1A);
+
   /// Glass surface — translucent, blurred.
   static const Color glass = Color(0x140E1A2E);
   static const Color glassHover = Color(0x1E14283E);

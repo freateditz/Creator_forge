@@ -69,13 +69,15 @@ class DashboardScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Dashboard',
-                      style: const TextStyle(
-                        color: DesignTokens.textPrimary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 32,
-                        letterSpacing: -0.8,
-                      )),
+                  Text(
+                    'Dashboard',
+                    style: const TextStyle(
+                      color: DesignTokens.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 32,
+                      letterSpacing: -0.8,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     'Your creator workspace',
@@ -164,12 +166,14 @@ class DashboardScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Quick Actions',
-            style: TextStyle(
-              color: DesignTokens.textPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 20,
-            )),
+        const Text(
+          'Quick Actions',
+          style: TextStyle(
+            color: DesignTokens.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+          ),
+        ),
         const SizedBox(height: 14),
         GridView.count(
           crossAxisCount: 3,
@@ -233,12 +237,14 @@ class DashboardScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Recent Activity',
-            style: TextStyle(
-              color: DesignTokens.textPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 20,
-            )),
+        const Text(
+          'Recent Activity',
+          style: TextStyle(
+            color: DesignTokens.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+          ),
+        ),
         const SizedBox(height: 14),
         GlassPane(
           padding: EdgeInsets.zero,
@@ -442,8 +448,7 @@ class _GlassRecentDownloadRow extends StatelessWidget {
       DownloadStatus.completed => DesignTokens.success,
       DownloadStatus.failed => DesignTokens.error,
       DownloadStatus.cancelled => DesignTokens.warning,
-      DownloadStatus.downloading || DownloadStatus.merging =>
-        DesignTokens.info,
+      DownloadStatus.downloading || DownloadStatus.merging => DesignTokens.info,
       _ => DesignTokens.warning,
     };
 

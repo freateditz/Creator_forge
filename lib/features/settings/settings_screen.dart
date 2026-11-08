@@ -162,9 +162,9 @@ class SettingsScreen extends ConsumerWidget {
                         versionAsync: ffmpegVersion,
                         icon: Icons.settings_applications_outlined,
                         provisioningProvider: ffmpegProvisioningProvider,
-                        supportsAutoInstall: Platform.isWindows || Platform.isMacOS,
-                        description:
-                            'Required for video/audio merging, 4K downloads, audio conversion, and AI features.',
+                        supportsAutoInstall:
+                            Platform.isWindows || Platform.isMacOS,
+                        description: 'Required for video/audio merging, 4K downloads, audio conversion, and AI features.',
                         installHint: Platform.isWindows
                             ? null
                             : 'Install via: brew install ffmpeg',
@@ -176,8 +176,7 @@ class SettingsScreen extends ConsumerWidget {
                         provisioningProvider: ytdlpProvisioningProvider,
                         supportsAutoInstall:
                             Platform.isWindows || Platform.isMacOS,
-                        description:
-                            'Required for downloading from YouTube and 1000+ supported sites.',
+                        description: 'Required for downloading from YouTube and 1000+ supported sites.',
                       ),
                       _ProvisionableTile(
                         label: 'Python 3.10+',
@@ -185,8 +184,7 @@ class SettingsScreen extends ConsumerWidget {
                         icon: Icons.code_outlined,
                         provisioningProvider: pythonProvisioningProvider,
                         supportsAutoInstall: Platform.isWindows,
-                        description:
-                            'Required for AI vocal separation, background removal, and browser extension integration.',
+                        description: 'Required for AI vocal separation, background removal, and browser extension integration.',
                         installHint: Platform.isWindows
                             ? null
                             : 'Install from python.org or via package manager',
@@ -228,7 +226,11 @@ class SettingsScreen extends ConsumerWidget {
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           children: [
-                            Icon(Icons.build_outlined, size: 18, color: AppColors.textMedium),
+                            Icon(
+                              Icons.build_outlined,
+                              size: 18,
+                              color: AppColors.textMedium,
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
@@ -237,7 +239,8 @@ class SettingsScreen extends ConsumerWidget {
                               ),
                             ),
                             FilledButton.tonal(
-                              onPressed: () => context.go(RoutePaths.dependencySetup),
+                              onPressed: () =>
+                                  context.go(RoutePaths.dependencySetup),
                               style: FilledButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -245,7 +248,10 @@ class SettingsScreen extends ConsumerWidget {
                                 ),
                                 minimumSize: Size.zero,
                               ),
-                              child: Text('Open', style: AppTextStyles.labelSmall),
+                              child: Text(
+                                'Open',
+                                style: AppTextStyles.labelSmall,
+                              ),
                             ),
                           ],
                         ),
@@ -600,7 +606,8 @@ class _ProvisionableTile extends ConsumerWidget {
                   color: statusColor ?? AppColors.textMedium,
                 ),
               ),
-              if (canInstall && provisioning.status == ProvisioningStatus.idle) ...[
+              if (canInstall &&
+                  provisioning.status == ProvisioningStatus.idle) ...[
                 const SizedBox(width: 10),
                 FilledButton.tonal(
                   onPressed: () =>
@@ -612,10 +619,7 @@ class _ProvisionableTile extends ConsumerWidget {
                     ),
                     minimumSize: Size.zero,
                   ),
-                  child: Text(
-                    'Install',
-                    style: AppTextStyles.labelSmall,
-                  ),
+                  child: Text('Install', style: AppTextStyles.labelSmall),
                 ),
               ],
               if (provisioning.status == ProvisioningStatus.done &&
@@ -634,7 +638,9 @@ class _ProvisionableTile extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(
               description!,
-              style: AppTextStyles.caption.copyWith(color: AppColors.textMedium),
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textMedium,
+              ),
             ),
           ],
           if (provisioning.status == ProvisioningStatus.downloading) ...[

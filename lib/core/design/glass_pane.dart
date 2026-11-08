@@ -39,7 +39,8 @@ class _GlassPaneState extends State<GlassPane> {
   @override
   Widget build(BuildContext context) {
     final baseColor =
-        widget.color ?? (_hovered ? DesignTokens.glassHover : DesignTokens.glass);
+        widget.color ??
+        (_hovered ? DesignTokens.glassHover : DesignTokens.glass);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -50,7 +51,9 @@ class _GlassPaneState extends State<GlassPane> {
           color: baseColor,
           borderRadius: widget.borderRadius,
           border: Border.all(
-            color: DesignTokens.glassBorder.withValues(alpha: widget.borderOpacity),
+            color: DesignTokens.glassBorder.withValues(
+              alpha: widget.borderOpacity,
+            ),
             width: 1,
           ),
           boxShadow: widget.shadow != null
@@ -92,10 +95,7 @@ class _GlassPaneState extends State<GlassPane> {
                     ),
                   ),
                 ),
-                Padding(
-                  padding: widget.padding,
-                  child: widget.child,
-                ),
+                Padding(padding: widget.padding, child: widget.child),
               ],
             ),
           ),

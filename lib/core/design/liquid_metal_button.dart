@@ -117,19 +117,11 @@ class _LiquidMetalButtonState extends State<LiquidMetalButton>
       return widget.iconBeforeLabel
           ? Row(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                widget.icon!,
-                const SizedBox(width: 8),
-                widget.child,
-              ],
+              children: [widget.icon!, const SizedBox(width: 8), widget.child],
             )
           : Row(
               mainAxisSize: MainAxisSize.min,
-              children: [
-                widget.child,
-                const SizedBox(width: 8),
-                widget.icon!,
-              ],
+              children: [widget.child, const SizedBox(width: 8), widget.icon!],
             );
     }
     return DefaultTextStyle(

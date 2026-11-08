@@ -237,7 +237,8 @@ class DependencyProvisioner {
 
   String get pythonDir => p.join(binDir, 'python');
 
-  bool get isPythonProvisioned => File(p.join(pythonDir, 'python.exe')).existsSync();
+  bool get isPythonProvisioned =>
+      File(p.join(pythonDir, 'python.exe')).existsSync();
 
   /// Downloads and extracts the Python embeddable package to [binDir]/python.
   ///
@@ -314,7 +315,10 @@ class DependencyProvisioner {
     final pythonExe = p.join(pythonDirPath, 'python.exe');
     if (!File(pythonExe).existsSync()) {
       // Try one level deeper
-      final dirs = Directory(pythonDirPath).listSync().whereType<Directory>().toList();
+      final dirs = Directory(pythonDirPath)
+          .listSync()
+          .whereType<Directory>()
+          .toList();
       for (final d in dirs) {
         final exe = p.join(d.path, 'python.exe');
         if (File(exe).existsSync()) {
@@ -340,7 +344,9 @@ class DependencyProvisioner {
       await _downloadFile(url: getPipUrl, destPath: getPipPath);
 
       // Run get-pip.py
-      final result = await Process.run(pythonExe, [getPipPath], runInShell: false);
+      final result = await Process.run(pythonExe, [
+        getPipPath,
+      ], runInShell: false);
       if (result.exitCode != 0) {
         _log.warning('pip bootstrap failed: ${result.stderr}');
         // Don't throw - pip is optional for our use case

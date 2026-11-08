@@ -69,10 +69,7 @@ class _BeamsBackgroundState extends State<BeamsBackground>
 /// A tiny invisible widget that listens to an [AnimationController] and
 /// triggers [CustomPaint] repaints on every tick so the beams drift.
 class _BeamsAnimListener extends StatefulWidget {
-  const _BeamsAnimListener({
-    required this.controller,
-    required this.child,
-  });
+  const _BeamsAnimListener({required this.controller, required this.child});
 
   final AnimationController controller;
   final Widget child;

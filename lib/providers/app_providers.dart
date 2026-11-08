@@ -293,7 +293,9 @@ final ytdlpVersionProvider = FutureProvider<String?>((ref) async {
 // Python version detection
 final pythonVersionProvider = FutureProvider<String?>((ref) async {
   try {
-    final result = await Process.run('python', ['--version'], runInShell: false);
+    final result = await Process.run('python', [
+      '--version',
+    ], runInShell: false);
     if (result.exitCode == 0) {
       final out = result.stdout as String;
       final match = RegExp(r'Python (\d+\.\d+\.\d+)').firstMatch(out);
@@ -301,7 +303,9 @@ final pythonVersionProvider = FutureProvider<String?>((ref) async {
     }
   } catch (_) {}
   try {
-    final result = await Process.run('python3', ['--version'], runInShell: false);
+    final result = await Process.run('python3', [
+      '--version',
+    ], runInShell: false);
     if (result.exitCode == 0) {
       final out = result.stdout as String;
       final match = RegExp(r'Python (\d+\.\d+\.\d+)').firstMatch(out);
@@ -309,7 +313,10 @@ final pythonVersionProvider = FutureProvider<String?>((ref) async {
     }
   } catch (_) {}
   try {
-    final result = await Process.run('py', ['-3', '--version'], runInShell: false);
+    final result = await Process.run('py', [
+      '-3',
+      '--version',
+    ], runInShell: false);
     if (result.exitCode == 0) {
       final out = result.stdout as String;
       final match = RegExp(r'Python (\d+\.\d+\.\d+)').firstMatch(out);

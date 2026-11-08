@@ -103,9 +103,11 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
               message: 'Required for downloading from YouTube and 1000+ sites.',
               icon: Icons.warning_amber_outlined,
               color: AppColors.warning,
-              isInstalling: ytdlpProvisioning.status == ProvisioningStatus.downloading,
+              isInstalling:
+                  ytdlpProvisioning.status == ProvisioningStatus.downloading,
               progress: ytdlpProvisioning.progress,
-              onInstall: () => ref.read(ytdlpProvisioningProvider.notifier).provision(),
+              onInstall: () =>
+                  ref.read(ytdlpProvisioningProvider.notifier).provision(),
               canAutoInstall: Platform.isWindows || Platform.isMacOS,
             );
           },
@@ -120,9 +122,11 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
               message: 'Required for HD/4K video merging, audio conversion, and AI features.',
               icon: Icons.info_outline,
               color: AppColors.warning,
-              isInstalling: ffmpegProvisioning.status == ProvisioningStatus.downloading,
+              isInstalling:
+                  ffmpegProvisioning.status == ProvisioningStatus.downloading,
               progress: ffmpegProvisioning.progress,
-              onInstall: () => ref.read(ffmpegProvisioningProvider.notifier).provision(),
+              onInstall: () =>
+                  ref.read(ffmpegProvisioningProvider.notifier).provision(),
               canAutoInstall: Platform.isWindows || Platform.isMacOS,
             );
           },
@@ -147,9 +151,7 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: color.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -23,7 +23,8 @@ class DependencySetupScreen extends ConsumerWidget {
     final ytdlpProvisioning = ref.watch(ytdlpProvisioningProvider);
     final pythonProvisioning = ref.watch(pythonProvisioningProvider);
 
-    final allInstalled = ffmpegVersion.valueOrNull != null &&
+    final allInstalled =
+        ffmpegVersion.valueOrNull != null &&
         ytdlpVersion.valueOrNull != null &&
         pythonVersion.valueOrNull != null;
 
@@ -65,7 +66,9 @@ class DependencySetupScreen extends ConsumerWidget {
                           allInstalled
                               ? Icons.check_circle_outline
                               : Icons.build_circle_outlined,
-                          color: allInstalled ? AppColors.success : AppColors.primary,
+                          color: allInstalled
+                              ? AppColors.success
+                              : AppColors.primary,
                           size: 28,
                         ),
                       ),
@@ -98,10 +101,16 @@ class DependencySetupScreen extends ConsumerWidget {
                     const SizedBox(height: 16),
                     FilledButton.icon(
                       onPressed: () {
-                        ref.read(ffmpegProvisioningProvider.notifier).provision();
-                        ref.read(ytdlpProvisioningProvider.notifier).provision();
+                        ref
+                            .read(ffmpegProvisioningProvider.notifier)
+                            .provision();
+                        ref
+                            .read(ytdlpProvisioningProvider.notifier)
+                            .provision();
                         if (Platform.isWindows) {
-                          ref.read(pythonProvisioningProvider.notifier).provision();
+                          ref
+                              .read(pythonProvisioningProvider.notifier)
+                              .provision();
                         }
                       },
                       icon: const Icon(Icons.download_for_offline, size: 18),
@@ -124,8 +133,7 @@ class DependencySetupScreen extends ConsumerWidget {
             _DependencyCard(
               title: 'FFmpeg',
               subtitle: 'Video/audio processing engine',
-              description:
-                  'Required for: HD/4K video merging, audio extraction, format conversion, AI features.',
+              description: 'Required for: HD/4K video merging, audio extraction, format conversion, AI features.',
               icon: Icons.settings_applications_outlined,
               versionAsync: ffmpegVersion,
               provisioningState: ffmpegProvisioning,
@@ -133,7 +141,8 @@ class DependencySetupScreen extends ConsumerWidget {
               installHint: Platform.isWindows
                   ? null
                   : 'Install via: brew install ffmpeg',
-              onInstall: () => ref.read(ffmpegProvisioningProvider.notifier).provision(),
+              onInstall: () =>
+                  ref.read(ffmpegProvisioningProvider.notifier).provision(),
             ).animate().fadeIn(delay: 100.ms, duration: 300.ms),
 
             const SizedBox(height: 16),
@@ -141,14 +150,14 @@ class DependencySetupScreen extends ConsumerWidget {
             _DependencyCard(
               title: 'yt-dlp',
               subtitle: 'Video downloader',
-              description:
-                  'Required for: Downloading from YouTube, Twitter, Instagram, TikTok, and 1000+ sites.',
+              description: 'Required for: Downloading from YouTube, Twitter, Instagram, TikTok, and 1000+ sites.',
               icon: Icons.download_for_offline_outlined,
               versionAsync: ytdlpVersion,
               provisioningState: ytdlpProvisioning,
               supportsAutoInstall: Platform.isWindows || Platform.isMacOS,
               installHint: null,
-              onInstall: () => ref.read(ytdlpProvisioningProvider.notifier).provision(),
+              onInstall: () =>
+                  ref.read(ytdlpProvisioningProvider.notifier).provision(),
             ).animate().fadeIn(delay: 200.ms, duration: 300.ms),
 
             const SizedBox(height: 16),
@@ -156,8 +165,7 @@ class DependencySetupScreen extends ConsumerWidget {
             _DependencyCard(
               title: 'Python 3.10+',
               subtitle: 'AI & integration runtime',
-              description:
-                  'Required for: AI vocal separation, AI background removal, browser extension integration.',
+              description: 'Required for: AI vocal separation, AI background removal, browser extension integration.',
               icon: Icons.code_outlined,
               versionAsync: pythonVersion,
               provisioningState: pythonProvisioning,
@@ -165,7 +173,8 @@ class DependencySetupScreen extends ConsumerWidget {
               installHint: Platform.isWindows
                   ? null
                   : 'Install from python.org or your package manager',
-              onInstall: () => ref.read(pythonProvisioningProvider.notifier).provision(),
+              onInstall: () =>
+                  ref.read(pythonProvisioningProvider.notifier).provision(),
             ).animate().fadeIn(delay: 300.ms, duration: 300.ms),
 
             const SizedBox(height: 24),
@@ -222,11 +231,17 @@ class DependencySetupScreen extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: AppColors.success, size: 20),
+                    Icon(
+                      Icons.info_outline,
+                      color: AppColors.success,
+                      size: 20,
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -273,9 +288,11 @@ class _DependencyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isInstalled = versionAsync.valueOrNull != null;
-    final isInstalling = provisioningState.status == ProvisioningStatus.downloading;
+    final isInstalling =
+        provisioningState.status == ProvisioningStatus.downloading;
     final hasError = provisioningState.status == ProvisioningStatus.error;
-    final isDone = provisioningState.status == ProvisioningStatus.done && !isInstalled;
+    final isDone =
+        provisioningState.status == ProvisioningStatus.done && !isInstalled;
 
     Color statusColor;
     String statusText;
@@ -360,7 +377,10 @@ class _DependencyCard extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (!isInstalled && supportsAutoInstall && !isInstalling && !hasError) ...[
+                    if (!isInstalled &&
+                        supportsAutoInstall &&
+                        !isInstalling &&
+                        !hasError) ...[
                       const SizedBox(height: 8),
                       FilledButton.tonal(
                         onPressed: onInstall,
@@ -454,7 +474,9 @@ class _DependencyCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Error: ${provisioningState.errorMessage}',
-                      style: AppTextStyles.caption.copyWith(color: AppColors.error),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.error,
+                      ),
                     ),
                   ),
                 ],
@@ -472,7 +494,9 @@ class _DependencyCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       installHint!,
-                      style: AppTextStyles.caption.copyWith(color: AppColors.textMedium),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textMedium,
+                      ),
                     ),
                   ),
                 ],

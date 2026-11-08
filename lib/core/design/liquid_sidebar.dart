@@ -29,10 +29,7 @@ class LiquidSidebar extends StatefulWidget {
 }
 
 class LiquidSidebarSection {
-  LiquidSidebarSection({
-    required this.label,
-    required this.items,
-  });
+  LiquidSidebarSection({required this.label, required this.items});
 
   final String label;
   final List<LiquidSidebarItem> items;
@@ -130,27 +127,16 @@ class _LiquidSidebarState extends State<LiquidSidebar>
     final allItems = <_FlatItem>[];
 
     for (final section in widget.sections) {
-      allItems.add(_FlatItem(
-        isHeader: true,
-        headerLabel: section.label,
-      ));
+      allItems.add(_FlatItem(isHeader: true, headerLabel: section.label));
       for (final item in section.items) {
-        allItems.add(_FlatItem(
-          isHeader: false,
-          item: item,
-          index: flatIndex,
-        ));
+        allItems.add(_FlatItem(isHeader: false, item: item, index: flatIndex));
         _itemKeys.add(GlobalKey());
         flatIndex++;
       }
     }
 
     for (final item in widget.footer) {
-      allItems.add(_FlatItem(
-        isHeader: false,
-        item: item,
-        index: flatIndex,
-      ));
+      allItems.add(_FlatItem(isHeader: false, item: item, index: flatIndex));
       _itemKeys.add(GlobalKey());
       flatIndex++;
     }
@@ -243,31 +229,21 @@ class _LiquidSidebarState extends State<LiquidSidebar>
       decoration: BoxDecoration(
         color: DesignTokens.bgDeep,
         border: Border(
-          right: BorderSide(
-            color: DesignTokens.glassBorder,
-            width: 1,
-          ),
+          right: BorderSide(color: DesignTokens.glassBorder, width: 1),
         ),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.horizontal(
           right: Radius.circular(widget.borderRadius),
         ),
-        child: Stack(
-          children: children,
-        ),
+        child: Stack(children: children),
       ),
     );
   }
 }
 
 class _FlatItem {
-  _FlatItem({
-    this.isHeader = false,
-    this.headerLabel,
-    this.item,
-    this.index,
-  });
+  _FlatItem({this.isHeader = false, this.headerLabel, this.item, this.index});
 
   final bool isHeader;
   final String? headerLabel;
@@ -325,8 +301,10 @@ class _LiquidSidebarItemTile extends StatelessWidget {
               ),
               if (item.badge != null && item.badge! > 0)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     gradient: DesignTokens.accentGradient,
                     borderRadius: BorderRadius.circular(10),
