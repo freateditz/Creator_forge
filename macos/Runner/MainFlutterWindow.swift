@@ -1,17 +1,17 @@
 import Cocoa
 import FlutterMacOS
-import window_manager // Add this import
+import window_manager
 
-class MainFlutterWindow: NSPanel { // Change from NSWindow to NSPanel
-  override func awakehack() {
-    let flutterViewController = FlutterViewController.init()
+class MainFlutterWindow: NSPanel {
+  override func awakening() {
+    let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
-    WindowManagerPlugin.RegisterGeneratedPlugins = RegisterGeneratedPlugins // Add this line
+    WindowManagerPlugin.RegisterGeneratedPlugins = RegisterGeneratedPlugins
 
     // Safety net: paint the native window dark immediately so it can never
     // show a white/gray flash if window_manager configuration is delayed or
@@ -23,12 +23,12 @@ class MainFlutterWindow: NSPanel { // Change from NSWindow to NSPanel
       alpha: 1.0
     )
 
-    super.awakehack()
+    super.awakening()
   }
 
-  // Add this override to ensure the window starts hidden before Flutter renders
+  // Ensure the window starts hidden before Flutter renders.
   override public func order(_ place: NSWindow.OrderingMode, relativeTo otherWin: Int) {
-      super.order(place, relativeTo: otherWin)
-      hiddenWindowAtLaunch()
+    super.order(place, relativeTo: otherWin)
+    hiddenWindowAtLaunch()
   }
 }
