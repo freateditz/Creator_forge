@@ -121,9 +121,13 @@ class _PinterestScreenState extends ConsumerState<PinterestScreen> {
   }
 
   Widget _buildUrlInput(PinterestState pinState) {
-    return Row(
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 10,
+      runSpacing: 10,
       children: [
-        Expanded(
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 280),
           child: TextField(
             controller: _urlController,
             focusNode: _urlFocus,
@@ -136,9 +140,7 @@ class _PinterestScreenState extends ConsumerState<PinterestScreen> {
             keyboardType: TextInputType.url,
           ),
         ),
-        const SizedBox(width: 10),
         _buildPasteButton(),
-        const SizedBox(width: 8),
         ElevatedButton.icon(
           onPressed: pinState.metadataState == PinterestMetadataState.loading
               ? null
@@ -155,8 +157,7 @@ class _PinterestScreenState extends ConsumerState<PinterestScreen> {
               : const Icon(Icons.search, size: 16),
           label: const Text('Analyse'),
         ),
-        if (pinState.metadataState != PinterestMetadataState.idle) ...[
-          const SizedBox(width: 8),
+        if (pinState.metadataState != PinterestMetadataState.idle)
           OutlinedButton(
             onPressed: () {
               _urlController.clear();
@@ -164,7 +165,6 @@ class _PinterestScreenState extends ConsumerState<PinterestScreen> {
             },
             child: const Text('Clear'),
           ),
-        ],
       ],
     ).animate().fadeIn(delay: 80.ms, duration: 200.ms);
   }
@@ -371,7 +371,11 @@ class _PinterestScreenState extends ConsumerState<PinterestScreen> {
   }
 
   Widget _buildDownloadButton(PinterestState pinState, String outputDir) {
-    return Row(
+    return Wrap(
+      alignment: WrapAlignment.start,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 10,
+      runSpacing: 10,
       children: [
         ElevatedButton.icon(
           onPressed: pinState.isEnqueuing
@@ -395,7 +399,6 @@ class _PinterestScreenState extends ConsumerState<PinterestScreen> {
             style: AppTextStyles.labelLarge.copyWith(color: Colors.white),
           ),
         ),
-        const SizedBox(width: 12),
         OutlinedButton(
           onPressed: () => context.go(RoutePaths.downloads),
           child: const Text('View queue'),

@@ -66,12 +66,19 @@ class _LiquidSidebarState extends State<LiquidSidebar>
       vsync: this,
       duration: const Duration(milliseconds: 350),
     );
-    _updateActiveFromRoute();
+    // Inherited route info (GoRouterState) is NOT available during initState,
+    // so we never call GoRouterState.of(context) here. The initial active
+    // item is resolved in didChangeDependencies, which runs after initState
+    // and before the first build, once the GoRouter inherited widget is
+    // attached.
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Dependencies (and therefore GoRouterState) are guaranteed ready here,
+    // and this is called again on every route change, so the active item
+    // stays in sync without any external notifier.
     final route = GoRouterState.of(context).matchedLocation;
     if (route != _currentRoute) {
       _currentRoute = route;
@@ -91,15 +98,34 @@ class _LiquidSidebarState extends State<LiquidSidebar>
         index++;
       }
     }
-    if (foundIndex != null && foundIndex != _activeIndex) {
-      setState(() => _activeIndex = foundIndex);
-      _animateToItem(foundIndex);
+    if (foundIndex == null || foundIndex == _activeIndex) return;
+
+    _activeIndex = foundIndex;
+    // Marking the active index is safe here: this runs either from
+    // didChangeDependencies (first build, after super) or from a post-frame
+    // callback. Both are valid points to schedule a rebuild.
+    if (mounted) setState(() {});
+
+    // The capsule animation needs the item's render box to exist, which is not
+    // true during the first build (the ListView has not laid out yet). Defer
+    // it to the next frame so we never index into an empty _itemKeys list.
+    _scheduleAnimation(foundIndex);
+  }
+
+  void _scheduleAnimation(int index) {
+    if (!_controller.isAnimating) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _animateToItem(index);
+      });
     }
   }
 
   void _animateToItem(int index) {
     final context = this.context;
     if (!context.mounted) return;
+    // Guard against the keys not being populated yet (first layout) or the
+    // index being out of range.
+    if (index < 0 || index >= _itemKeys.length) return;
     final key = _itemKeys[index];
     final box = key.currentContext?.findRenderObject() as RenderBox?;
     if (box != null) {
@@ -160,66 +186,67 @@ class _LiquidSidebarState extends State<LiquidSidebar>
       children.add(const SizedBox(height: 4));
     }
 
-    // The liquid indicator (animated capsule)
-    children.add(
-      AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          final t = Curves.easeOutCubic.transform(_controller.value);
-          final y = _currentY + (_targetY - _currentY) * t;
-          return Positioned(
-            left: 8,
-            right: 8,
-            top: y,
-            height: 44,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: DesignTokens.accentGradient,
-                boxShadow: const [
-                  BoxShadow(
-                    color: DesignTokens.accentCyanGlow,
-                    blurRadius: 16,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-
+    // List + animated indicator overlay (Stack only around the list area)
     children.add(
       Expanded(
-        child: ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          itemCount: allItems.length,
-          itemBuilder: (context, i) {
-            final flat = allItems[i];
-            if (flat.isHeader) {
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(12, 16, 12, 6),
-                child: Text(
-                  flat.headerLabel!,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: DesignTokens.textTertiary,
-                    letterSpacing: 1.2,
+        child: Stack(
+          children: [
+            // The liquid indicator (animated capsule)
+            AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) {
+                final t = Curves.easeOutCubic.transform(_controller.value);
+                final y = _currentY + (_targetY - _currentY) * t;
+                return Positioned(
+                  left: 8,
+                  right: 8,
+                  top: y,
+                  height: 44,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: DesignTokens.accentGradient,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: DesignTokens.accentCyanGlow,
+                          blurRadius: 16,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }
-            return _LiquidSidebarItemTile(
-              key: _itemKeys[flat.index!],
-              item: flat.item!,
-              isActive: _activeIndex == flat.index,
-              onTap: () {
-                context.go(flat.item!.route);
-                setState(() => _activeIndex = flat.index);
-                _animateToItem(flat.index!);
+                );
               },
-            );
-          },
+            ),
+            // Scrollable navigation list
+            ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              itemCount: allItems.length,
+              itemBuilder: (context, i) {
+                final flat = allItems[i];
+                if (flat.isHeader) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 16, 12, 6),
+                    child: Text(
+                      flat.headerLabel!,
+                      style: textTheme.labelSmall?.copyWith(
+                        color: DesignTokens.textTertiary,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  );
+                }
+                return _LiquidSidebarItemTile(
+                  key: _itemKeys[flat.index!],
+                  item: flat.item!,
+                  isActive: _activeIndex == flat.index,
+                  onTap: () {
+                    context.go(flat.item!.route);
+                  },
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
@@ -236,7 +263,7 @@ class _LiquidSidebarState extends State<LiquidSidebar>
         borderRadius: BorderRadius.horizontal(
           right: Radius.circular(widget.borderRadius),
         ),
-        child: Stack(children: children),
+        child: Column(children: children),
       ),
     );
   }

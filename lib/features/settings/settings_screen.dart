@@ -376,26 +376,29 @@ class _StepperTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
         children: [
           Icon(icon, size: 18, color: AppColors.textMedium),
-          const SizedBox(width: 12),
-          Expanded(child: Text(label, style: AppTextStyles.bodyMedium)),
+          Flexible(
+            flex: 2,
+            child: Text(label, style: AppTextStyles.bodyMedium),
+          ),
           _StepButton(
             icon: Icons.remove,
             enabled: value > min,
             onTap: () => onChanged(value - 1),
           ),
-          const SizedBox(width: 4),
-          SizedBox(
-            width: 28,
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 28, maxWidth: 40),
             child: Text(
               '$value',
               style: AppTextStyles.bodyMedium,
               textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(width: 4),
           _StepButton(
             icon: Icons.add,
             enabled: value < max,
@@ -497,29 +500,40 @@ class _DropdownTile<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 12,
+        runSpacing: 8,
         children: [
           Icon(icon, size: 18, color: AppColors.textMedium),
-          const SizedBox(width: 12),
-          Expanded(child: Text(label, style: AppTextStyles.bodyMedium)),
-          DropdownButtonHideUnderline(
-            child: DropdownButton<T>(
-              value: value,
-              isDense: true,
-              borderRadius: BorderRadius.circular(8),
-              dropdownColor: AppColors.surfaceHigher,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.textMedium,
+          Flexible(
+            flex: 2,
+            child: Text(label, style: AppTextStyles.bodyMedium),
+          ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 160, maxWidth: 240),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<T>(
+                value: value,
+                isDense: true,
+                borderRadius: BorderRadius.circular(8),
+                dropdownColor: AppColors.surfaceHigher,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textMedium,
+                ),
+                isExpanded: true,
+                items: options.entries
+                    .map(
+                      (e) => DropdownMenuItem<T>(
+                        value: e.key,
+                        child: Text(e.value),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) onChanged(v);
+                },
               ),
-              items: options.entries
-                  .map(
-                    (e) =>
-                        DropdownMenuItem<T>(value: e.key, child: Text(e.value)),
-                  )
-                  .toList(),
-              onChanged: (v) {
-                if (v != null) onChanged(v);
-              },
             ),
           ),
         ],
@@ -570,16 +584,20 @@ class _ProvisionableTile extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 10,
+            runSpacing: 8,
             children: [
               Icon(icon, size: 18, color: AppColors.textMedium),
-              const SizedBox(width: 12),
-              Expanded(
+              Flexible(
+                flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(label, style: AppTextStyles.bodyMedium),
-                    if (description != null) ...[
+                    if (description != null && !isInstalled) ...[
                       const SizedBox(height: 2),
                       Text(
                         description!,
@@ -595,21 +613,21 @@ class _ProvisionableTile extends ConsumerWidget {
                 Container(
                   width: 8,
                   height: 8,
-                  margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
                     color: statusColor,
                     shape: BoxShape.circle,
                   ),
                 ),
-              Text(
-                statusText,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: statusColor ?? AppColors.textMedium,
+              Flexible(
+                child: Text(
+                  statusText,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: statusColor ?? AppColors.textMedium,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (canInstall &&
-                  provisioning.status == ProvisioningStatus.idle) ...[
-                const SizedBox(width: 10),
+              if (canInstall && provisioning.status == ProvisioningStatus.idle)
                 FilledButton.tonal(
                   onPressed: () =>
                       ref.read(provisioningProvider.notifier).provision(),
@@ -622,17 +640,14 @@ class _ProvisionableTile extends ConsumerWidget {
                   ),
                   child: Text('Install', style: AppTextStyles.labelSmall),
                 ),
-              ],
               if (provisioning.status == ProvisioningStatus.done &&
-                  !isInstalled) ...[
-                const SizedBox(width: 10),
+                  !isInstalled)
                 Text(
                   'Installed — restart may be required',
                   style: AppTextStyles.labelSmall.copyWith(
                     color: AppColors.success,
                   ),
                 ),
-              ],
             ],
           ),
           if (description != null && !isInstalled) ...[

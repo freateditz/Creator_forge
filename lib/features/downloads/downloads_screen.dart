@@ -104,20 +104,24 @@ class _DownloadsScreenState extends ConsumerState<DownloadsScreen> {
             }).toList(),
           ),
         ),
-        SizedBox(
-          width: 220,
-          child: TextField(
-            decoration: const InputDecoration(
-              hintText: 'Search downloads…',
-              prefixIcon: Icon(Icons.search, size: 16),
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
+        const SizedBox(width: 12),
+        Flexible(
+          flex: 2,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 280),
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search downloads…',
+                prefixIcon: Icon(Icons.search, size: 16),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
               ),
+              style: AppTextStyles.bodySmall,
+              onChanged: (v) => setState(() => _search = v),
             ),
-            style: AppTextStyles.bodySmall,
-            onChanged: (v) => setState(() => _search = v),
           ),
         ),
       ],

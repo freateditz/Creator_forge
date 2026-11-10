@@ -26,12 +26,14 @@ class FileInputCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: Row(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 8,
               children: [
                 Text('Input Files', style: AppTextStyles.labelMedium),
-                const Spacer(),
-                if (state.selectedFiles.isNotEmpty) ...[
+                if (state.selectedFiles.isNotEmpty)
                   TextButton(
                     onPressed: notifier.clearFiles,
                     child: Text(
@@ -41,8 +43,6 @@ class FileInputCard extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                ],
                 FilledButton.icon(
                   onPressed: () => _pickFiles(ref),
                   icon: const Icon(Icons.add, size: 16),

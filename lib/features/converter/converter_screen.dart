@@ -433,18 +433,25 @@ class _ConverterScreenState extends ConsumerState<ConverterScreen> {
         _state.selectedFormat != null &&
         _state.status != _ConversionStatus.converting;
 
-    return ElevatedButton.icon(
-      onPressed: canConvert ? _startConversion : null,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-      ),
-      icon: const Icon(Icons.swap_horiz, size: 18),
-      label: Text(
-        _state.selectedFormat == null
-            ? 'Select a format above'
-            : 'Convert to ${_state.selectedFormat!.label}',
-        style: AppTextStyles.labelLarge.copyWith(color: Colors.white),
-      ),
+    return Wrap(
+      alignment: WrapAlignment.start,
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        ElevatedButton.icon(
+          onPressed: canConvert ? _startConversion : null,
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+          ),
+          icon: const Icon(Icons.swap_horiz, size: 18),
+          label: Text(
+            _state.selectedFormat == null
+                ? 'Select a format above'
+                : 'Convert to ${_state.selectedFormat!.label}',
+            style: AppTextStyles.labelLarge.copyWith(color: Colors.white),
+          ),
+        ),
+      ],
     ).animate().fadeIn(delay: 120.ms, duration: 200.ms);
   }
 

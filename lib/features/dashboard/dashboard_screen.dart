@@ -118,7 +118,43 @@ class DashboardScreen extends ConsumerWidget {
     int activeProcessing,
     int? dirSizeBytes,
   ) {
-    return Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 600;
+        if (isNarrow) {
+          return Column(
+            children: [
+              _buildStatCard(
+                label: 'Total Downloads',
+                value: '$totalDownloads',
+                icon: Icons.download_done,
+                iconColor: DesignTokens.accentCyan,
+              ),
+              const SizedBox(height: 12),
+              _buildStatCard(
+                label: 'Active Downloads',
+                value: '$activeDownloads',
+                icon: Icons.downloading,
+                iconColor: DesignTokens.warning,
+              ),
+              const SizedBox(height: 12),
+              _buildStatCard(
+                label: 'Processing Jobs',
+                value: '$activeProcessing',
+                icon: Icons.tune,
+                iconColor: DesignTokens.accentViolet,
+              ),
+              const SizedBox(height: 12),
+              _buildStatCard(
+                label: 'Storage Used',
+                value: _formatBytes(dirSizeBytes),
+                icon: Icons.folder_outlined,
+                iconColor: DesignTokens.accentPink,
+              ),
+            ],
+          );
+        }
+        return Row(
           children: [
             Expanded(
               child: _GlassStatCard(
@@ -156,79 +192,104 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
           ],
-        )
-        .animate()
-        .fadeIn(delay: 100.ms, duration: 300.ms)
-        .slideY(begin: 0.05, end: 0);
+        );
+      },
+    )
+    .animate()
+    .fadeIn(delay: 100.ms, duration: 300.ms)
+    .slideY(begin: 0.05, end: 0);
+  }
+
+  Widget _buildStatCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color iconColor,
+  }) {
+    return _GlassStatCard(
+      label: label,
+      value: value,
+      icon: icon,
+      iconColor: iconColor,
+    ).animate().fadeIn(delay: 100.ms, duration: 300.ms).slideY(begin: 0.05, end: 0);
   }
 
   Widget _buildQuickActions(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Quick Actions',
-          style: TextStyle(
-            color: DesignTokens.textPrimary,
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-          ),
-        ),
-        const SizedBox(height: 14),
-        GridView.count(
-          crossAxisCount: 3,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 14,
-          mainAxisSpacing: 14,
-          childAspectRatio: 2.4,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _GlassActionCard(
-              icon: Icons.play_circle_outline,
-              label: 'Download Video',
-              subtitle: 'YouTube, Instagram & more',
-              accent: DesignTokens.accentCyan,
-              onTap: () => context.go(RoutePaths.youtube),
+            const Text(
+              'Quick Actions',
+              style: TextStyle(
+                color: DesignTokens.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+              ),
             ),
-            _GlassActionCard(
-              icon: Icons.audiotrack,
-              label: 'Extract Audio',
-              subtitle: 'Pull audio from any video',
-              accent: DesignTokens.accentCyan,
-              onTap: () => context.go(RoutePaths.audio),
-            ),
-            _GlassActionCard(
-              icon: Icons.graphic_eq,
-              label: 'Separate Vocals',
-              subtitle: 'Isolate vocals & instrumentals',
-              accent: DesignTokens.accentViolet,
-              onTap: () => context.go(RoutePaths.vocalSeparator),
-            ),
-            _GlassActionCard(
-              icon: Icons.auto_fix_high_outlined,
-              label: 'Remove Background',
-              subtitle: 'AI background removal',
-              accent: DesignTokens.accentPink,
-              onTap: () => context.go(RoutePaths.backgroundRemover),
-            ),
-            _GlassActionCard(
-              icon: Icons.swap_horiz,
-              label: 'Convert Media',
-              subtitle: 'Video, audio & image formats',
-              accent: DesignTokens.success,
-              onTap: () => context.go(RoutePaths.converter),
-            ),
-            _GlassActionCard(
-              icon: Icons.extension_outlined,
-              label: 'Browser Downloads',
-              subtitle: 'Download from any site',
-              accent: DesignTokens.warning,
-              onTap: () => context.go(RoutePaths.browserDownloads),
+            const SizedBox(height: 14),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: constraints.maxWidth < 800 ? 2 : 3,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                childAspectRatio: constraints.maxWidth < 800 ? 1.8 : 1.4,
+              ),
+              itemCount: 6,
+              itemBuilder: (context, index) {
+                return [
+                  _GlassActionCard(
+                    icon: Icons.play_circle_outline,
+                    label: 'Download Video',
+                    subtitle: 'YouTube, Instagram & more',
+                    accent: DesignTokens.accentCyan,
+                    onTap: () => context.go(RoutePaths.youtube),
+                  ),
+                  _GlassActionCard(
+                    icon: Icons.audiotrack,
+                    label: 'Extract Audio',
+                    subtitle: 'Pull audio from any video',
+                    accent: DesignTokens.accentCyan,
+                    onTap: () => context.go(RoutePaths.audio),
+                  ),
+                  _GlassActionCard(
+                    icon: Icons.graphic_eq,
+                    label: 'Separate Vocals',
+                    subtitle: 'Isolate vocals & instrumentals',
+                    accent: DesignTokens.accentViolet,
+                    onTap: () => context.go(RoutePaths.vocalSeparator),
+                  ),
+                  _GlassActionCard(
+                    icon: Icons.auto_fix_high_outlined,
+                    label: 'Remove Background',
+                    subtitle: 'AI background removal',
+                    accent: DesignTokens.accentPink,
+                    onTap: () => context.go(RoutePaths.backgroundRemover),
+                  ),
+                  _GlassActionCard(
+                    icon: Icons.swap_horiz,
+                    label: 'Convert Media',
+                    subtitle: 'Video, audio & image formats',
+                    accent: DesignTokens.success,
+                    onTap: () => context.go(RoutePaths.converter),
+                  ),
+                  _GlassActionCard(
+                    icon: Icons.extension_outlined,
+                    label: 'Browser Downloads',
+                    subtitle: 'Download from any site',
+                    accent: DesignTokens.warning,
+                    onTap: () => context.go(RoutePaths.browserDownloads),
+                  ),
+                ][index];
+              },
             ),
           ],
         ),
-      ],
-    ).animate().fadeIn(delay: 150.ms, duration: 300.ms);
+      ),
+    );
   }
 
   Widget _buildRecentActivity(List<DownloadTask> downloads) {

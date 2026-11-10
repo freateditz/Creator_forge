@@ -119,13 +119,14 @@ class SeparationJobTile extends StatelessWidget {
         color: AppColors.error,
         tooltip: 'Cancel',
         padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(),
+        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
       );
     }
     if (job.stage == SeparationStage.failed ||
         job.stage == SeparationStage.cancelled) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
+      return Wrap(
+        spacing: 4,
+        runSpacing: 4,
         children: [
           IconButton(
             onPressed: onRetry,
@@ -134,9 +135,8 @@ class SeparationJobTile extends StatelessWidget {
             color: AppColors.primary,
             tooltip: 'Retry',
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
-          const SizedBox(width: 4),
           IconButton(
             onPressed: onRemove,
             icon: const Icon(Icons.close_rounded),
@@ -144,14 +144,15 @@ class SeparationJobTile extends StatelessWidget {
             color: AppColors.textMedium,
             tooltip: 'Remove',
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
         ],
       );
     }
     if (job.stage == SeparationStage.completed) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
+      return Wrap(
+        spacing: 4,
+        runSpacing: 4,
         children: [
           if (onReveal != null)
             IconButton(
@@ -161,9 +162,8 @@ class SeparationJobTile extends StatelessWidget {
               color: AppColors.success,
               tooltip: 'Reveal in Finder',
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
-          const SizedBox(width: 4),
           IconButton(
             onPressed: onRemove,
             icon: const Icon(Icons.close_rounded),
@@ -171,7 +171,7 @@ class SeparationJobTile extends StatelessWidget {
             color: AppColors.textMedium,
             tooltip: 'Remove',
             padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
         ],
       );

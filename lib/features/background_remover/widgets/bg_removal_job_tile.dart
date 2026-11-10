@@ -257,20 +257,21 @@ class _BeforeAfterRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final outputExists = File(outputPath).existsSync();
 
-    return Row(
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 8,
       children: [
         _ThumbPanel(
           label: 'Original',
           imagePath: inputPath,
           showCheckerboard: false,
         ),
-        const SizedBox(width: 8),
         const Icon(
           Icons.arrow_forward_rounded,
           size: 16,
           color: AppColors.textMedium,
         ),
-        const SizedBox(width: 8),
         _ThumbPanel(
           label: 'Result',
           imagePath: outputExists ? outputPath : null,
@@ -299,9 +300,13 @@ class _ThumbPanel extends StatelessWidget {
       children: [
         Text(label, style: AppTextStyles.caption),
         const SizedBox(height: 4),
-        SizedBox(
-          width: 100,
-          height: 72,
+        ConstrainedBox(
+          constraints: const BoxConstraints(
+            minWidth: 70,
+            maxWidth: 100,
+            minHeight: 50,
+            maxHeight: 72,
+          ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: Stack(

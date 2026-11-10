@@ -24,6 +24,10 @@ class IpcServer {
   bool _started = false;
   bool _disposed = false;
 
+  // macOS struct sockaddr_un.sun_path is 104 bytes (incl. NUL), Linux 108.
+  // Keep a small margin so a path that is merely "long" still binds.
+  static const int _kUnixSocketPathLimit = 102;
+
   // Emits DateTime whenever the IPC server successfully processes a PING from
   // the browser extension — used by the integration wizard to confirm a live
   // end-to-end connection.
@@ -56,6 +60,22 @@ class IpcServer {
     final sockFile = File(_socketPath);
     if (sockFile.existsSync()) sockFile.deleteSync();
 
+    // macOS/Linux limit the sockaddr_un.sun_path field (104 bytes macOS,
+    // 108 Linux, including the terminating NUL). If the configured socket
+    // path is too long, ServerSocket.bind throws
+    // "The length of path exceeds the limit" and the IPC layer becomes
+    // unusable. Fall back to a TCP loopback port instead — the conn file
+    // format already supports both transports and the native host reads
+    // whichever key is present.
+    if (_socketPath.length >= _kUnixSocketPathLimit) {
+      _log.warning(
+        'Unix socket path too long ($_socketPath.length chars >= '
+        '$_kUnixSocketPathLimit); falling back to TCP loopback.',
+      );
+      await _startTcpSocket();
+      return;
+    }
+
     try {
       _server = await ServerSocket.bind(
         InternetAddress(_socketPath, type: InternetAddressType.unix),
@@ -69,8 +89,17 @@ class IpcServer {
         cancelOnError: false,
       );
     } catch (e) {
-      _log.warning('Failed to start IPC Unix socket.', e);
-      _started = false;
+      _log.warning(
+        'Failed to start IPC Unix socket (path=${_socketPath.length} chars).',
+        e,
+      );
+      // Last-resort fallback: try TCP loopback so the browser extension can
+      // still reach the app even if the Unix socket cannot be bound.
+      try {
+        await _startTcpSocket();
+      } catch (_) {
+        _started = false;
+      }
     }
   }
 

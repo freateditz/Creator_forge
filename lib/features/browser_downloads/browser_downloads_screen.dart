@@ -372,7 +372,9 @@ class _BrowserSelectionCard extends StatelessWidget {
               ),
           const SizedBox(height: 14),
           // Action buttons
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               if (!isConfigured)
                 FilledButton.icon(
@@ -386,7 +388,6 @@ class _BrowserSelectionCard extends StatelessWidget {
                   icon: const Icon(Icons.open_in_browser, size: 16),
                   label: const Text('Open Extensions Page'),
                 ),
-                const SizedBox(width: 8),
                 OutlinedButton.icon(
                   onPressed: onBeginSetup,
                   icon: const Icon(Icons.build_outlined, size: 16),
@@ -1206,11 +1207,13 @@ class _BrowserQueue extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        Wrap(
+          alignment: WrapAlignment.start,
+          spacing: 6,
+          runSpacing: 8,
           children: [
             Text('Browser Downloads', style: AppTextStyles.headingSmall),
             Text(' · ${tasks.length}', style: AppTextStyles.bodySmall),
-            const Spacer(),
             if (onClearCompleted != null)
               TextButton(
                 onPressed: onClearCompleted,

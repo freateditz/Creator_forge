@@ -30,18 +30,25 @@ class MediaInfoCard extends StatelessWidget {
   }
 
   Widget _buildThumbnail() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: 140,
-        height: 80,
-        child: info.thumbnailUrl != null
-            ? Image.network(
-                info.thumbnailUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _thumbnailPlaceholder(),
-              )
-            : _thumbnailPlaceholder(),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        minWidth: 80,
+        maxWidth: 140,
+        minHeight: 45,
+        maxHeight: 80,
+      ),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: info.thumbnailUrl != null
+              ? Image.network(
+                  info.thumbnailUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => _thumbnailPlaceholder(),
+                )
+              : _thumbnailPlaceholder(),
+        ),
       ),
     );
   }

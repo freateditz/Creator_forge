@@ -225,9 +225,13 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
   }
 
   Widget _buildUrlInput(YouTubeState ytState) {
-    return Row(
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 10,
+      runSpacing: 10,
       children: [
-        Expanded(
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 280),
           child: TextField(
             controller: _urlController,
             focusNode: _urlFocus,
@@ -240,9 +244,7 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
             keyboardType: TextInputType.url,
           ),
         ),
-        const SizedBox(width: 10),
         _buildPasteButton(),
-        const SizedBox(width: 8),
         ElevatedButton.icon(
           onPressed: ytState.metadataState == MetadataState.loading
               ? null
@@ -259,8 +261,7 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
               : const Icon(Icons.download, size: 16),
           label: const Text('Download Options'),
         ),
-        if (ytState.metadataState != MetadataState.idle) ...[
-          const SizedBox(width: 8),
+        if (ytState.metadataState != MetadataState.idle)
           OutlinedButton(
             onPressed: () {
               _urlController.clear();
@@ -268,7 +269,6 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
             },
             child: const Text('Clear'),
           ),
-        ],
       ],
     ).animate().fadeIn(delay: 80.ms, duration: 200.ms);
   }
@@ -577,7 +577,11 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
     String outputDir,
     MediaInfo info,
   ) {
-    return Row(
+    return Wrap(
+      alignment: WrapAlignment.start,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 10,
+      runSpacing: 10,
       children: [
         ElevatedButton.icon(
           onPressed: ytState.isEnqueuing
@@ -601,13 +605,11 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
             style: AppTextStyles.labelLarge.copyWith(color: Colors.white),
           ),
         ),
-        const SizedBox(width: 10),
         OutlinedButton.icon(
           onPressed: () => _openDownloadDialog(info),
           icon: const Icon(Icons.open_in_new, size: 16),
           label: const Text('Options Window…'),
         ),
-        const SizedBox(width: 12),
         OutlinedButton(
           onPressed: () => context.go(RoutePaths.downloads),
           child: const Text('View queue'),

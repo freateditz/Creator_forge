@@ -22,8 +22,11 @@ class AudioScreen extends ConsumerWidget {
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left: config panel
-          SizedBox(width: 340, child: _ConfigPanel()),
+          // Left: config panel - use ConstrainedBox instead of fixed width
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 280, maxWidth: 420),
+            child: IntrinsicWidth(stepWidth: 140, child: _ConfigPanel()),
+          ),
           const VerticalDivider(width: 1, color: AppColors.border),
           // Right: queue
           const Expanded(child: _QueuePanel()),

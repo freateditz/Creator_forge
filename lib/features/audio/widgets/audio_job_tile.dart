@@ -198,34 +198,34 @@ class _ActionButtons extends StatelessWidget {
     return switch (job.status) {
       ProcessingJobStatus.processing ||
       ProcessingJobStatus.pending => IconButton(
-        icon: const Icon(Icons.close, size: 16),
-        color: AppColors.textLow,
-        tooltip: 'Cancel',
-        onPressed: () => engine.cancel(job.id),
-      ),
-      ProcessingJobStatus.failed || ProcessingJobStatus.cancelled => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.refresh, size: 16),
-            color: AppColors.primary,
-            tooltip: 'Retry',
-            onPressed: () => engine.retry(job.id),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 16),
-            color: AppColors.textLow,
-            tooltip: 'Remove',
-            onPressed: () => engine.remove(job.id),
-          ),
-        ],
-      ),
+          icon: const Icon(Icons.close, size: 16),
+          color: AppColors.textLow,
+          tooltip: 'Cancel',
+          onPressed: () => engine.cancel(job.id),
+        ),
+      ProcessingJobStatus.failed || ProcessingJobStatus.cancelled => Wrap(
+          spacing: 4,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 16),
+              color: AppColors.primary,
+              tooltip: 'Retry',
+              onPressed: () => engine.retry(job.id),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 16),
+              color: AppColors.textLow,
+              tooltip: 'Remove',
+              onPressed: () => engine.remove(job.id),
+            ),
+          ],
+        ),
       ProcessingJobStatus.completed => IconButton(
-        icon: const Icon(Icons.delete_outline, size: 16),
-        color: AppColors.textLow,
-        tooltip: 'Remove',
-        onPressed: () => engine.remove(job.id),
-      ),
+          icon: const Icon(Icons.delete_outline, size: 16),
+          color: AppColors.textLow,
+          tooltip: 'Remove',
+          onPressed: () => engine.remove(job.id),
+        ),
     };
   }
 }
