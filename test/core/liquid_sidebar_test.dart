@@ -63,10 +63,12 @@ Future<void> _pumpSidebar(WidgetTester tester, String initialRoute) async {
     ],
   );
 
-  await tester.pumpWidget(MaterialApp.router(
-    theme: ThemeData(brightness: Brightness.dark),
-    routerConfig: router,
-  ));
+  await tester.pumpWidget(
+    MaterialApp.router(
+      theme: ThemeData(brightness: Brightness.dark),
+      routerConfig: router,
+    ),
+  );
   // Let post-frame callbacks (initial active-item resolution) flush.
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 100));
@@ -74,8 +76,9 @@ Future<void> _pumpSidebar(WidgetTester tester, String initialRoute) async {
 
 void main() {
   group('LiquidSidebar lifecycle', () {
-    testWidgets('does not crash during initState on the initial route',
-        (tester) async {
+    testWidgets('does not crash during initState on the initial route', (
+      tester,
+    ) async {
       // This used to throw the inherited-element exception.
       await _pumpSidebar(tester, '/');
 
@@ -85,8 +88,9 @@ void main() {
       expect(find.text('Settings Content'), findsNothing);
     });
 
-    testWidgets('highlights the active item matching the current route',
-        (tester) async {
+    testWidgets('highlights the active item matching the current route', (
+      tester,
+    ) async {
       await _pumpSidebar(tester, '/settings');
 
       // Verify the Settings content renders (sidebar active state is visual;
@@ -95,8 +99,7 @@ void main() {
       expect(find.text('Home Content'), findsNothing);
     });
 
-    testWidgets('switching route does not crash',
-        (tester) async {
+    testWidgets('switching route does not crash', (tester) async {
       await _pumpSidebar(tester, '/');
 
       // Both content and sidebar labels render

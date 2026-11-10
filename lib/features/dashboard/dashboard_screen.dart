@@ -119,85 +119,85 @@ class DashboardScreen extends ConsumerWidget {
     int? dirSizeBytes,
   ) {
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final isNarrow = constraints.maxWidth < 600;
-        if (isNarrow) {
-          return Column(
-            children: [
-              _buildStatCard(
-                label: 'Total Downloads',
-                value: '$totalDownloads',
-                icon: Icons.download_done,
-                iconColor: DesignTokens.accentCyan,
-              ),
-              const SizedBox(height: 12),
-              _buildStatCard(
-                label: 'Active Downloads',
-                value: '$activeDownloads',
-                icon: Icons.downloading,
-                iconColor: DesignTokens.warning,
-              ),
-              const SizedBox(height: 12),
-              _buildStatCard(
-                label: 'Processing Jobs',
-                value: '$activeProcessing',
-                icon: Icons.tune,
-                iconColor: DesignTokens.accentViolet,
-              ),
-              const SizedBox(height: 12),
-              _buildStatCard(
-                label: 'Storage Used',
-                value: _formatBytes(dirSizeBytes),
-                icon: Icons.folder_outlined,
-                iconColor: DesignTokens.accentPink,
-              ),
-            ],
-          );
-        }
-        return Row(
-          children: [
-            Expanded(
-              child: _GlassStatCard(
-                label: 'Total Downloads',
-                value: '$totalDownloads',
-                icon: Icons.download_done,
-                iconColor: DesignTokens.accentCyan,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _GlassStatCard(
-                label: 'Active Downloads',
-                value: '$activeDownloads',
-                icon: Icons.downloading,
-                iconColor: DesignTokens.warning,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _GlassStatCard(
-                label: 'Processing Jobs',
-                value: '$activeProcessing',
-                icon: Icons.tune,
-                iconColor: DesignTokens.accentViolet,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _GlassStatCard(
-                label: 'Storage Used',
-                value: _formatBytes(dirSizeBytes),
-                icon: Icons.folder_outlined,
-                iconColor: DesignTokens.accentPink,
-              ),
-            ),
-          ],
-        );
-      },
-    )
-    .animate()
-    .fadeIn(delay: 100.ms, duration: 300.ms)
-    .slideY(begin: 0.05, end: 0);
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 600;
+            if (isNarrow) {
+              return Column(
+                children: [
+                  _buildStatCard(
+                    label: 'Total Downloads',
+                    value: '$totalDownloads',
+                    icon: Icons.download_done,
+                    iconColor: DesignTokens.accentCyan,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildStatCard(
+                    label: 'Active Downloads',
+                    value: '$activeDownloads',
+                    icon: Icons.downloading,
+                    iconColor: DesignTokens.warning,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildStatCard(
+                    label: 'Processing Jobs',
+                    value: '$activeProcessing',
+                    icon: Icons.tune,
+                    iconColor: DesignTokens.accentViolet,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildStatCard(
+                    label: 'Storage Used',
+                    value: _formatBytes(dirSizeBytes),
+                    icon: Icons.folder_outlined,
+                    iconColor: DesignTokens.accentPink,
+                  ),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(
+                  child: _GlassStatCard(
+                    label: 'Total Downloads',
+                    value: '$totalDownloads',
+                    icon: Icons.download_done,
+                    iconColor: DesignTokens.accentCyan,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _GlassStatCard(
+                    label: 'Active Downloads',
+                    value: '$activeDownloads',
+                    icon: Icons.downloading,
+                    iconColor: DesignTokens.warning,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _GlassStatCard(
+                    label: 'Processing Jobs',
+                    value: '$activeProcessing',
+                    icon: Icons.tune,
+                    iconColor: DesignTokens.accentViolet,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _GlassStatCard(
+                    label: 'Storage Used',
+                    value: _formatBytes(dirSizeBytes),
+                    icon: Icons.folder_outlined,
+                    iconColor: DesignTokens.accentPink,
+                  ),
+                ),
+              ],
+            );
+          },
+        )
+        .animate()
+        .fadeIn(delay: 100.ms, duration: 300.ms)
+        .slideY(begin: 0.05, end: 0);
   }
 
   Widget _buildStatCard({
@@ -207,11 +207,14 @@ class DashboardScreen extends ConsumerWidget {
     required Color iconColor,
   }) {
     return _GlassStatCard(
-      label: label,
-      value: value,
-      icon: icon,
-      iconColor: iconColor,
-    ).animate().fadeIn(delay: 100.ms, duration: 300.ms).slideY(begin: 0.05, end: 0);
+          label: label,
+          value: value,
+          icon: icon,
+          iconColor: iconColor,
+        )
+        .animate()
+        .fadeIn(delay: 100.ms, duration: 300.ms)
+        .slideY(begin: 0.05, end: 0);
   }
 
   Widget _buildQuickActions(BuildContext context) {
@@ -287,8 +290,8 @@ class DashboardScreen extends ConsumerWidget {
               },
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 
