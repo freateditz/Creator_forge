@@ -92,6 +92,13 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
     final ytdlpProvisioning = ref.watch(ytdlpProvisioningProvider);
     final ffmpegProvisioning = ref.watch(ffmpegProvisioningProvider);
 
+    bool isActive(ProvisioningState s) =>
+        s.status == ProvisioningStatus.downloading ||
+        s.status == ProvisioningStatus.extracting ||
+        s.status == ProvisioningStatus.installing ||
+        s.status == ProvisioningStatus.verifying ||
+        s.status == ProvisioningStatus.checking;
+
     return Column(
       children: [
         ytdlpAsync.when(
@@ -104,9 +111,12 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
               message: 'Required for downloading from YouTube and 1000+ sites.',
               icon: Icons.warning_amber_outlined,
               color: AppColors.warning,
-              isInstalling:
-                  ytdlpProvisioning.status == ProvisioningStatus.downloading,
+              isInstalling: isActive(ytdlpProvisioning),
               progress: ytdlpProvisioning.progress,
+              stageLabel: ytdlpProvisioning.stageLabel,
+              errorMessage: ytdlpProvisioning.status == ProvisioningStatus.error
+                  ? ytdlpProvisioning.errorMessage
+                  : null,
               onInstall: () =>
                   ref.read(ytdlpProvisioningProvider.notifier).provision(),
               canAutoInstall: Platform.isWindows || Platform.isMacOS,
@@ -123,9 +133,13 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
               message: 'Required for HD/4K video merging, audio conversion, and AI features.',
               icon: Icons.info_outline,
               color: AppColors.warning,
-              isInstalling:
-                  ffmpegProvisioning.status == ProvisioningStatus.downloading,
+              isInstalling: isActive(ffmpegProvisioning),
               progress: ffmpegProvisioning.progress,
+              stageLabel: ffmpegProvisioning.stageLabel,
+              errorMessage:
+                  ffmpegProvisioning.status == ProvisioningStatus.error
+                  ? ffmpegProvisioning.errorMessage
+                  : null,
               onInstall: () =>
                   ref.read(ffmpegProvisioningProvider.notifier).provision(),
               canAutoInstall: Platform.isWindows || Platform.isMacOS,
@@ -145,7 +159,10 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
     required double progress,
     required VoidCallback onInstall,
     required bool canAutoInstall,
+    String? stageLabel,
+    String? errorMessage,
   }) {
+    final hasError = errorMessage != null;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
@@ -158,8 +175,12 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: color, size: 18),
+              Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: Icon(icon, color: color, size: 18),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -179,25 +200,47 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
                         color: color.withValues(alpha: 0.9),
                       ),
                     ),
+                    if (hasError) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Error: $errorMessage',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.error,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
                 ),
               ),
-              if (canAutoInstall && !isInstalling) ...[
-                const SizedBox(width: 10),
+              const SizedBox(width: 10),
+              if (canAutoInstall && !isInstalling)
                 FilledButton.tonal(
                   onPressed: onInstall,
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+                      horizontal: 14,
+                      vertical: 10,
                     ),
-                    minimumSize: Size.zero,
+                    minimumSize: const Size(80, 36),
                     backgroundColor: color.withValues(alpha: 0.2),
                     foregroundColor: color,
                   ),
-                  child: Text('Install', style: AppTextStyles.labelSmall),
+                  child: Text(
+                    hasError ? 'Retry' : 'Install',
+                    style: AppTextStyles.labelSmall,
+                  ),
                 ),
-              ],
+              if (isInstalling)
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: color,
+                  ),
+                ),
             ],
           ),
           if (isInstalling) ...[
@@ -213,15 +256,22 @@ class _YouTubeScreenState extends ConsumerState<YouTubeScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              progress > 0
-                  ? 'Downloading… ${(progress * 100).toStringAsFixed(0)}%'
-                  : 'Downloading…',
+              _installProgressLabel(stageLabel, progress),
               style: AppTextStyles.caption.copyWith(color: color),
             ),
           ],
         ],
       ),
     ).animate().fadeIn(duration: 300.ms);
+  }
+
+  String _installProgressLabel(String? stageLabel, double progress) {
+    final stage = stageLabel ?? 'Downloading';
+    if (progress > 0 &&
+        (stageLabel == null || stageLabel.toLowerCase().contains('download'))) {
+      return '$stage… ${(progress * 100).toStringAsFixed(0)}%';
+    }
+    return '$stage…';
   }
 
   Widget _buildUrlInput(YouTubeState ytState) {

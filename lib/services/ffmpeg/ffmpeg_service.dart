@@ -62,11 +62,15 @@ class FfmpegServiceImpl implements FfmpegService {
     final c = <String>[
       ?bundledExe,
       managedExe,
-      'ffmpeg',
+      // ~/.local/bin is a common user-local install location (yt-dlp, pipx, etc.)
       if (home.isNotEmpty) p.join(home, '.local', 'bin', 'ffmpeg'),
+      // Homebrew (Apple Silicon)
       '/opt/homebrew/bin/ffmpeg',
+      // Homebrew (Intel) / MacPorts
       '/usr/local/bin/ffmpeg',
       '/usr/bin/ffmpeg',
+      // PATH lookup (works in terminal but NOT in GUI app launched from Dock)
+      'ffmpeg',
     ];
     if (Platform.isWindows) {
       final localAppData = Platform.environment['LOCALAPPDATA'] ?? '';

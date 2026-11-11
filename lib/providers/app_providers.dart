@@ -332,29 +332,45 @@ final dependencyProvisionerProvider = Provider<DependencyProvisioner>((ref) {
   return DependencyProvisioner(binDir: AppConfig.instance.binDir);
 });
 
-enum ProvisioningStatus { idle, downloading, done, error }
+/// Fine-grained installation stages exposed to the UI.
+enum ProvisioningStatus {
+  idle,
+  checking,
+  downloading,
+  extracting,
+  installing,
+  verifying,
+  installed,
+  error,
+  // Legacy alias kept for compat — same as [downloading].
+  done,
+}
 
 class ProvisioningState {
   final ProvisioningStatus status;
   final double progress;
   final String? errorMessage;
+  final String? stageLabel;
 
   const ProvisioningState({
     this.status = ProvisioningStatus.idle,
     this.progress = 0,
     this.errorMessage,
+    this.stageLabel,
   });
 
   ProvisioningState copyWith({
     ProvisioningStatus? status,
     double? progress,
     String? errorMessage,
+    String? stageLabel,
     bool clearError = false,
   }) {
     return ProvisioningState(
       status: status ?? this.status,
       progress: progress ?? this.progress,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      stageLabel: stageLabel ?? this.stageLabel,
     );
   }
 }
@@ -364,7 +380,18 @@ class YtDlpProvisioningNotifier extends Notifier<ProvisioningState> {
   ProvisioningState build() => const ProvisioningState();
 
   Future<void> provision() async {
-    state = const ProvisioningState(status: ProvisioningStatus.downloading);
+    // Prevent duplicate jobs
+    if (state.status == ProvisioningStatus.downloading ||
+        state.status == ProvisioningStatus.extracting ||
+        state.status == ProvisioningStatus.installing ||
+        state.status == ProvisioningStatus.verifying ||
+        state.status == ProvisioningStatus.checking) {
+      return;
+    }
+    state = const ProvisioningState(
+      status: ProvisioningStatus.downloading,
+      stageLabel: 'Downloading',
+    );
     try {
       await ref
           .read(dependencyProvisionerProvider)
@@ -372,14 +399,16 @@ class YtDlpProvisioningNotifier extends Notifier<ProvisioningState> {
             onProgress: (p) => state = state.copyWith(
               status: ProvisioningStatus.downloading,
               progress: p,
+              stageLabel: 'Downloading',
             ),
           );
       YtDlpLocator.instance.invalidate();
       ref.invalidate(ytdlpAvailableProvider);
       ref.invalidate(ytdlpVersionProvider);
       state = const ProvisioningState(
-        status: ProvisioningStatus.done,
+        status: ProvisioningStatus.installed,
         progress: 1,
+        stageLabel: 'Installed',
       );
     } catch (e) {
       state = ProvisioningState(
@@ -402,22 +431,51 @@ class FfmpegProvisioningNotifier extends Notifier<ProvisioningState> {
   ProvisioningState build() => const ProvisioningState();
 
   Future<void> provision() async {
-    state = const ProvisioningState(status: ProvisioningStatus.downloading);
+    // Prevent duplicate jobs
+    if (state.status == ProvisioningStatus.downloading ||
+        state.status == ProvisioningStatus.extracting ||
+        state.status == ProvisioningStatus.installing ||
+        state.status == ProvisioningStatus.verifying ||
+        state.status == ProvisioningStatus.checking) {
+      return;
+    }
+    state = const ProvisioningState(
+      status: ProvisioningStatus.downloading,
+      stageLabel: 'Downloading',
+    );
     try {
       await ref
           .read(dependencyProvisionerProvider)
           .provisionFfmpeg(
-            onProgress: (p) => state = state.copyWith(
-              status: ProvisioningStatus.downloading,
-              progress: p,
-            ),
+            onProgress: (p) {
+              // Keep state in downloading until onStage changes it
+              if (state.status == ProvisioningStatus.downloading ||
+                  state.status == ProvisioningStatus.idle) {
+                state = state.copyWith(
+                  status: ProvisioningStatus.downloading,
+                  progress: p,
+                );
+              }
+            },
+            onStage: (stage) {
+              final status = switch (stage.toLowerCase()) {
+                'downloading' => ProvisioningStatus.downloading,
+                'extracting' => ProvisioningStatus.extracting,
+                'installing' => ProvisioningStatus.installing,
+                'verifying' => ProvisioningStatus.verifying,
+                _ => ProvisioningStatus.downloading,
+              };
+              state = state.copyWith(status: status, stageLabel: stage);
+            },
           );
+      // Invalidate cached path so the new binary is picked up immediately
       (ref.read(ffmpegServiceProvider) as FfmpegServiceImpl).invalidate();
       ref.invalidate(ffmpegAvailableProvider);
       ref.invalidate(ffmpegVersionProvider);
       state = const ProvisioningState(
-        status: ProvisioningStatus.done,
+        status: ProvisioningStatus.installed,
         progress: 1,
+        stageLabel: 'Installed',
       );
     } catch (e) {
       state = ProvisioningState(

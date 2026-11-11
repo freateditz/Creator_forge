@@ -54,8 +54,8 @@ class LiquidSidebarItem {
 class _LiquidSidebarState extends State<LiquidSidebar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  double _targetY = 0;
-  final double _currentY = 0;
+  double _fromY = 0;
+  double _toY = 0;
   int? _activeIndex;
   String? _currentRoute;
 
@@ -127,12 +127,44 @@ class _LiquidSidebarState extends State<LiquidSidebar>
     // index being out of range.
     if (index < 0 || index >= _itemKeys.length) return;
     final key = _itemKeys[index];
-    final box = key.currentContext?.findRenderObject() as RenderBox?;
-    if (box != null) {
-      final pos = box.localToGlobal(Offset.zero);
-      setState(() => _targetY = pos.dy);
-      _controller.forward(from: 0);
+    final itemBox = key.currentContext?.findRenderObject() as RenderBox?;
+    if (itemBox == null) return;
+
+    // Find the Stack's render box by walking up from the item.
+    // We use the item's global position and subtract the Stack's global origin
+    // so the capsule's `top` is in Stack-local coordinates.
+    //
+    // We locate the Stack by looking at the Expanded child of this Column.
+    // The simplest reliable approach: get the item's global Y, then subtract
+    // the global Y of the first item in the list to work in list-local space,
+    // and add the list's padding offset.
+    final itemGlobalPos = itemBox.localToGlobal(Offset.zero);
+
+    // We want the top of the capsule to align with the top of the item tile.
+    // The Stack's top is the top of the Expanded region (below logo + divider).
+    // We find it by locating any ancestor with the Stack's RenderBox.
+    // Simplest: convert global → Stack-local using the Stack's key.
+    // Since we don't have a key on the Stack, we use the Column's RenderBox
+    // which is `this.context.findRenderObject()`. The Stack is a direct child.
+    final columnBox = context.findRenderObject() as RenderBox?;
+    if (columnBox == null) return;
+
+    // The Stack is Expanded inside the Column. Its top in global space
+    // equals the Column's top plus any logo/header height. Rather than
+    // computing that, convert the item's global position to Column-local,
+    // then subtract the Column's padding-top (8px per ListView padding).
+    final itemLocalToColumn = columnBox.globalToLocal(itemGlobalPos);
+
+    // Store current animated Y before changing targets (for smooth chaining)
+    final currentT = Curves.easeOutCubic.transform(_controller.value);
+    _fromY = _fromY + (_toY - _fromY) * currentT;
+    if (_fromY < 0) {
+      // First time: snap directly to target with no animation from 0
+      _fromY = itemLocalToColumn.dy;
     }
+    _toY = itemLocalToColumn.dy;
+    _controller.forward(from: 0);
+    setState(() {});
   }
 
   final List<GlobalKey> _itemKeys = [];
@@ -196,7 +228,9 @@ class _LiquidSidebarState extends State<LiquidSidebar>
               animation: _controller,
               builder: (context, _) {
                 final t = Curves.easeOutCubic.transform(_controller.value);
-                final y = _currentY + (_targetY - _currentY) * t;
+                final y = _fromY + (_toY - _fromY) * t;
+                // Don't render the capsule until we have a valid position
+                if (_fromY < 0) return const SizedBox.shrink();
                 return Positioned(
                   left: 8,
                   right: 8,

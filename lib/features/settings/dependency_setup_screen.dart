@@ -290,10 +290,15 @@ class _DependencyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isInstalled = versionAsync.valueOrNull != null;
     final isInstalling =
-        provisioningState.status == ProvisioningStatus.downloading;
+        provisioningState.status == ProvisioningStatus.downloading ||
+        provisioningState.status == ProvisioningStatus.extracting ||
+        provisioningState.status == ProvisioningStatus.installing ||
+        provisioningState.status == ProvisioningStatus.verifying ||
+        provisioningState.status == ProvisioningStatus.checking;
     final hasError = provisioningState.status == ProvisioningStatus.error;
     final isDone =
-        provisioningState.status == ProvisioningStatus.done && !isInstalled;
+        provisioningState.status == ProvisioningStatus.installed &&
+        !isInstalled;
 
     Color statusColor;
     String statusText;
@@ -305,7 +310,8 @@ class _DependencyCard extends StatelessWidget {
       statusIcon = Icons.check_circle;
     } else if (isInstalling) {
       statusColor = AppColors.primary;
-      statusText = 'Installing…';
+      final stage = provisioningState.stageLabel ?? 'Installing';
+      statusText = '$stage…';
       statusIcon = Icons.hourglass_top;
     } else if (hasError) {
       statusColor = AppColors.error;
@@ -398,10 +404,7 @@ class _DependencyCard extends StatelessWidget {
                     if (hasError) ...[
                       const SizedBox(height: 8),
                       OutlinedButton(
-                        onPressed: () {
-                          // Reset error state - we'd need a way to do this
-                          // For now just show the error
-                        },
+                        onPressed: onInstall,
                         style: OutlinedButton.styleFrom(
                           minimumSize: Size.zero,
                           padding: const EdgeInsets.symmetric(
@@ -455,9 +458,15 @@ class _DependencyCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    provisioningState.progress > 0
-                        ? 'Downloading… ${(provisioningState.progress * 100).toStringAsFixed(0)}%'
-                        : 'Downloading…',
+                    () {
+                      final stage =
+                          provisioningState.stageLabel ?? 'Downloading';
+                      final pct = provisioningState.progress;
+                      if (pct > 0 && stage.toLowerCase().contains('download')) {
+                        return '$stage… ${(pct * 100).toStringAsFixed(0)}%';
+                      }
+                      return '$stage…';
+                    }(),
                     style: AppTextStyles.caption.copyWith(color: statusColor),
                   ),
                 ],

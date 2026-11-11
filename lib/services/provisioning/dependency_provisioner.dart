@@ -22,9 +22,17 @@ class DependencyProvisioner {
   static const _ytDlpMacosUrl =
       'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos';
 
-  // FFmpeg for Windows — BtbN GPL-small build (ffmpeg + ffprobe, ~30 MB zip)
+  // FFmpeg for Windows — BtbN GPL build (ffmpeg + ffprobe)
   static const _ffmpegWindowsZipUrl =
       'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip';
+
+  // FFmpeg for macOS (Apple Silicon) — from GitHub releases (evermeet.cx is gone)
+  // Using an XZ-compressed static build from the yt-dlp/FFmpeg-Builds mirror.
+  static const _ffmpegMacosAarch64Url =
+      'https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-macos64-gpl.tar.xz';
+  // FFmpeg for macOS (Intel x86_64)
+  static const _ffmpegMacosX64Url =
+      'https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-macos64-gpl.tar.xz';
 
   // Python for Windows — official embeddable package (minimal, no installer needed)
   static const _pythonWindowsUrl =
@@ -38,7 +46,10 @@ class DependencyProvisioner {
       ? p.join(binDir, 'yt-dlp.exe')
       : p.join(binDir, 'yt-dlp');
 
-  bool get isYtDlpProvisioned => File(ytDlpPath).existsSync();
+  bool get isYtDlpProvisioned {
+    final f = File(ytDlpPath);
+    return f.existsSync() && f.statSync().size > 0;
+  }
 
   /// Downloads the yt-dlp standalone binary to [binDir].
   ///
@@ -73,29 +84,46 @@ class DependencyProvisioner {
       ? p.join(binDir, 'ffprobe.exe')
       : p.join(binDir, 'ffprobe');
 
-  bool get isFfmpegProvisioned => File(ffmpegPath).existsSync();
+  bool get isFfmpegProvisioned {
+    final f = File(ffmpegPath);
+    return f.existsSync() && f.statSync().size > 0;
+  }
 
   /// Downloads FFmpeg to [binDir].
   ///
   /// On Windows: downloads a pre-built zip and extracts ffmpeg.exe/ffprobe.exe
   /// using PowerShell Expand-Archive (available on Windows 10+).
   ///
-  /// On macOS: FFmpeg auto-download is not supported — users must install via
-  /// Homebrew (`brew install ffmpeg`). Throws [UnsupportedError] on macOS.
+  /// On macOS: downloads a static tar.xz build from yt-dlp/FFmpeg-Builds,
+  /// extracts ffmpeg and ffprobe, verifies both run, then removes the archive.
   ///
   /// [onProgress] receives 0.0–1.0 as download progresses (extraction not
   /// separately reported).
+  /// [onStage] receives a human-readable stage description.
   Future<String> provisionFfmpeg({
     void Function(double progress)? onProgress,
+    void Function(String stage)? onStage,
   }) async {
-    if (!Platform.isWindows) {
+    if (!Platform.isWindows && !Platform.isMacOS) {
       throw UnsupportedError(
-        'Automatic FFmpeg provisioning is only supported on Windows. '
-        'On macOS, install FFmpeg with: brew install ffmpeg',
+        'Automatic FFmpeg provisioning is only supported on Windows and macOS.',
       );
     }
+
+    if (Platform.isWindows) {
+      return _provisionFfmpegWindows(onProgress: onProgress, onStage: onStage);
+    } else {
+      return _provisionFfmpegMacos(onProgress: onProgress, onStage: onStage);
+    }
+  }
+
+  Future<String> _provisionFfmpegWindows({
+    void Function(double progress)? onProgress,
+    void Function(String stage)? onStage,
+  }) async {
     final zipPath = p.join(binDir, '_ffmpeg_download.zip');
     _log.info('Downloading FFmpeg from: $_ffmpegWindowsZipUrl');
+    onStage?.call('Downloading');
     await _downloadFile(
       url: _ffmpegWindowsZipUrl,
       destPath: zipPath,
@@ -103,6 +131,7 @@ class DependencyProvisioner {
     );
 
     _log.info('Extracting FFmpeg…');
+    onStage?.call('Extracting');
     await _extractFfmpegFromZip(zipPath: zipPath, destDir: binDir);
 
     // Clean up zip after extraction
@@ -116,8 +145,139 @@ class DependencyProvisioner {
       );
     }
 
+    // Verify ffmpeg runs
+    onStage?.call('Verifying');
+    for (final exe in [ffmpegPath, ffprobePath]) {
+      if (File(exe).existsSync()) {
+        final r = await Process.run(exe, ['-version'], runInShell: false);
+        if (r.exitCode != 0) {
+          throw StateError('FFmpeg verification failed for $exe: ${r.stderr}');
+        }
+      }
+    }
+
     _log.info('FFmpeg provisioned at: $ffmpegPath');
     return ffmpegPath;
+  }
+
+  Future<String> _provisionFfmpegMacos({
+    void Function(double progress)? onProgress,
+    void Function(String stage)? onStage,
+  }) async {
+    // Determine the right build URL based on architecture.
+    // yt-dlp/FFmpeg-Builds provides macOS builds as tar.xz archives.
+    final isArm = _isMacOSArm64();
+    final archiveUrl = isArm ? _ffmpegMacosAarch64Url : _ffmpegMacosX64Url;
+    final archiveName = '_ffmpeg_macos.tar.xz';
+    final archivePath = p.join(binDir, archiveName);
+
+    _log.info(
+      'Downloading FFmpeg for macOS (${isArm ? "arm64" : "x64"}) from: $archiveUrl',
+    );
+    onStage?.call('Downloading');
+    await _downloadFile(
+      url: archiveUrl,
+      destPath: archivePath,
+      onProgress: onProgress,
+    );
+
+    _log.info('Extracting FFmpeg archive…');
+    onStage?.call('Extracting');
+    await _extractFfmpegFromTarXz(archivePath: archivePath, destDir: binDir);
+
+    // Clean up archive
+    try {
+      await File(archivePath).delete();
+    } catch (_) {}
+
+    // Verify both binaries work
+    onStage?.call('Verifying');
+    for (final binary in [ffmpegPath, ffprobePath]) {
+      if (!File(binary).existsSync()) {
+        throw StateError('Expected binary not found after extraction: $binary');
+      }
+      final result = await Process.run(binary, ['-version'], runInShell: false);
+      if (result.exitCode != 0) {
+        throw StateError(
+          'Downloaded binary verification failed: $binary\n${result.stderr}',
+        );
+      }
+    }
+
+    _log.info('FFmpeg & ffprobe provisioned at: $binDir');
+    return ffmpegPath;
+  }
+
+  /// Returns true when the current macOS process is running natively on Apple Silicon.
+  static bool _isMacOSArm64() {
+    // `uname -m` returns arm64 on Apple Silicon (even under Rosetta for native processes).
+    try {
+      final result = Process.runSync('uname', ['-m']);
+      return result.exitCode == 0 &&
+          (result.stdout as String).trim().toLowerCase().contains('arm');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _extractFfmpegFromTarXz({
+    required String archivePath,
+    required String destDir,
+  }) async {
+    // Use tar which is available on macOS (and all POSIX systems)
+    final extractDir = p.join(destDir, '_ffmpeg_extracted');
+    await Directory(extractDir).create(recursive: true);
+
+    final result = await Process.run('tar', [
+      '-xJf',
+      archivePath,
+      '-C',
+      extractDir,
+    ], runInShell: false);
+
+    if (result.exitCode != 0) {
+      throw ProcessException(
+        'tar',
+        [],
+        'tar extraction failed: ${result.stderr}',
+        result.exitCode,
+      );
+    }
+
+    // Find ffmpeg and ffprobe inside the extracted directory tree
+    String? foundFfmpeg;
+    String? foundFfprobe;
+
+    await for (final entity in Directory(extractDir).list(recursive: true)) {
+      if (entity is File) {
+        final base = p.basename(entity.path);
+        if (base == 'ffmpeg' && foundFfmpeg == null) foundFfmpeg = entity.path;
+        if (base == 'ffprobe' && foundFfprobe == null) {
+          foundFfprobe = entity.path;
+        }
+      }
+      if (foundFfmpeg != null && foundFfprobe != null) break;
+    }
+
+    if (foundFfmpeg == null) {
+      throw StateError(
+        'Could not find ffmpeg binary inside downloaded archive.',
+      );
+    }
+
+    // Copy to binDir and make executable
+    await File(foundFfmpeg).copy(ffmpegPath);
+    await Process.run('chmod', ['+x', ffmpegPath]);
+
+    if (foundFfprobe != null) {
+      await File(foundFfprobe).copy(ffprobePath);
+      await Process.run('chmod', ['+x', ffprobePath]);
+    }
+
+    // Clean up extracted dir
+    try {
+      await Directory(extractDir).delete(recursive: true);
+    } catch (_) {}
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
