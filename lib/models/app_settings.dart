@@ -12,6 +12,8 @@ class AppSettings extends Equatable {
   final bool startMinimized;
   final String fileNamingTemplate;
   final int httpSegments;
+  final String selectedBrowserId;
+  final String downloadProfile; // 'balanced' (4), 'fast' (8), 'maximum' (16)
 
   const AppSettings({
     required this.defaultDownloadsDir,
@@ -25,6 +27,8 @@ class AppSettings extends Equatable {
     this.startMinimized = false,
     this.fileNamingTemplate = '%(title)s.%(ext)s',
     this.httpSegments = 8,
+    this.selectedBrowserId = 'edge',
+    this.downloadProfile = 'fast',
   });
 
   AppSettings copyWith({
@@ -39,6 +43,8 @@ class AppSettings extends Equatable {
     bool? startMinimized,
     String? fileNamingTemplate,
     int? httpSegments,
+    String? selectedBrowserId,
+    String? downloadProfile,
   }) {
     return AppSettings(
       defaultDownloadsDir: defaultDownloadsDir ?? this.defaultDownloadsDir,
@@ -53,6 +59,8 @@ class AppSettings extends Equatable {
       startMinimized: startMinimized ?? this.startMinimized,
       fileNamingTemplate: fileNamingTemplate ?? this.fileNamingTemplate,
       httpSegments: httpSegments ?? this.httpSegments,
+      selectedBrowserId: selectedBrowserId ?? this.selectedBrowserId,
+      downloadProfile: downloadProfile ?? this.downloadProfile,
     );
   }
 
@@ -68,6 +76,8 @@ class AppSettings extends Equatable {
     'startMinimized': startMinimized,
     'fileNamingTemplate': fileNamingTemplate,
     'httpSegments': httpSegments,
+    'selectedBrowserId': selectedBrowserId,
+    'downloadProfile': downloadProfile,
   };
 
   factory AppSettings.fromJson(
@@ -89,6 +99,8 @@ class AppSettings extends Equatable {
       fileNamingTemplate:
           json['fileNamingTemplate'] as String? ?? '%(title)s.%(ext)s',
       httpSegments: json['httpSegments'] as int? ?? 8,
+      selectedBrowserId: json['selectedBrowserId'] as String? ?? 'edge',
+      downloadProfile: json['downloadProfile'] as String? ?? 'fast',
     );
   }
 
@@ -105,5 +117,7 @@ class AppSettings extends Equatable {
     startMinimized,
     fileNamingTemplate,
     httpSegments,
+    selectedBrowserId,
+    downloadProfile,
   ];
 }

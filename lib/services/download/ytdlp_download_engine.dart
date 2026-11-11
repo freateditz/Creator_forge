@@ -332,6 +332,8 @@ class YtDlpDownloadEngine implements DownloadEngine {
       ],
       '--output', outputTemplate,
       if (ffmpegDir != null) ...['--ffmpeg-location', ffmpegDir],
+      '--concurrent-fragments',
+      '4',
       '--no-playlist',
       '--no-mtime',
       '--newline',

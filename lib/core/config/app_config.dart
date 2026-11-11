@@ -34,7 +34,10 @@ class AppConfig {
     final documents = await getApplicationDocumentsDirectory();
 
     appDataDir = p.join(appSupport.path, AppConstants.appName);
-    binDir = p.join(appDataDir, 'bin');
+    final roaming = Platform.environment['APPDATA'] ?? '';
+    binDir = Platform.isWindows && roaming.isNotEmpty
+        ? p.join(roaming, AppConstants.appName, 'bin')
+        : p.join(appDataDir, 'bin');
     tempDir = p.join(appDataDir, 'temp');
     logsDir = p.join(appDataDir, 'logs');
     modelsDir = p.join(appDataDir, 'models');

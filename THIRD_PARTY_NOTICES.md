@@ -91,9 +91,9 @@ This document lists third-party software used by CreatorForge and their licenses
 ## Media Processing
 
 ### FFmpeg
-- **License**: GNU LGPL v2.1+ (some optional components: GPL)
-- **URL**: https://ffmpeg.org
-- **Usage**: Audio extraction from video files, media probing
+- **License**: GNU GPL v3 / LGPL v2.1+ (BtbN GPL Static Builds)
+- **URL**: https://ffmpeg.org and https://github.com/BtbN/FFmpeg-Builds
+- **Usage**: Audio/video processing, merging, extraction, and conversion
 
 ### yt-dlp
 - **License**: The Unlicense (public domain)

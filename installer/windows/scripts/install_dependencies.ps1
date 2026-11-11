@@ -164,8 +164,31 @@ function Install-Ffmpeg {
 
     Write-Log "=== Installing FFmpeg ==="
 
-    # BtbN FFmpeg build URL (GPL static build, includes ffmpeg + ffprobe)
-    $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+    $destFfmpeg = Join-Path $BinDir "ffmpeg.exe"
+    $destFfprobe = Join-Path $BinDir "ffprobe.exe"
+
+    # Check if already installed and valid
+    if ((Test-Path $destFfmpeg) -and (Test-Path $destFfprobe)) {
+        try {
+            $p1 = Start-Process -FilePath $destFfmpeg -ArgumentList "-version" -NoNewWindow -PassThru -Wait
+            $p2 = Start-Process -FilePath $destFfprobe -ArgumentList "-version" -NoNewWindow -PassThru -Wait
+            if ($p1.ExitCode -eq 0 -and $p2.ExitCode -eq 0) {
+                Write-Log "Valid FFmpeg and ffprobe already exist at $BinDir. Reusing existing installation."
+                return $true
+            }
+        } catch {
+            Write-Log "Existing binaries found but verification failed. Re-downloading..." "WARN"
+        }
+    }
+
+    # Detect architecture (x64 or ARM64, accounting for emulated processes via PROCESSOR_ARCHITEW6432)
+    $isArm = ($env:PROCESSOR_ARCHITEW6432 -match 'ARM64') -or ($env:PROCESSOR_ARCHITECTURE -match 'ARM64')
+    $ffmpegUrl = if ($isArm) {
+        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-winarm64-gpl.zip"
+    } else {
+        "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+    }
+
     $zipPath = Join-Path $env:TEMP "ffmpeg-download.zip"
     $extractDir = Join-Path $env:TEMP "ffmpeg-extracted"
 
@@ -174,55 +197,58 @@ function Install-Ffmpeg {
         Remove-Item -Recurse -Force -Path $extractDir -ErrorAction SilentlyContinue
     }
 
-    # Download
-    if (-not (Download-File -Url $ffmpegUrl -Destination $zipPath -Description "FFmpeg")) {
-        return $false
-    }
-
-    # Extract
-    if (-not (Expand-ZipFile -ZipPath $zipPath -DestinationPath $extractDir)) {
-        return $false
-    }
-
-    # Find ffmpeg.exe and ffprobe.exe in extracted files
-    $ffmpegExe = Get-ChildItem -Path $extractDir -Filter "ffmpeg.exe" -Recurse | Select-Object -First 1
-    $ffprobeExe = Get-ChildItem -Path $extractDir -Filter "ffprobe.exe" -Recurse | Select-Object -First 1
-
-    if (-not $ffmpegExe) {
-        Write-Log "ffmpeg.exe not found in extracted archive" "ERROR"
-        return $false
-    }
-
-    # Copy to bin directory
-    $destFfmpeg = Join-Path $BinDir "ffmpeg.exe"
-    $destFfprobe = Join-Path $BinDir "ffprobe.exe"
-
-    Copy-Item -Path $ffmpegExe.FullName -Destination $destFfmpeg -Force
-    Write-Log "Installed: $destFfmpeg"
-
-    if ($ffprobeExe) {
-        Copy-Item -Path $ffprobeExe.FullName -Destination $destFfprobe -Force
-        Write-Log "Installed: $destFfprobe"
-    }
-
-    # Verify installation of both binaries
-    foreach ($exe in @($destFfmpeg, $destFfprobe)) {
-        if (Test-Path $exe) {
-            $process = Start-Process -FilePath $exe -ArgumentList "-version" -NoNewWindow -PassThru -Wait
-            if ($process.ExitCode -ne 0) {
-                Write-Log "Verification failed for $exe (ExitCode: $($process.ExitCode))" "ERROR"
-                return $false
-            }
-            Write-Log "Verified: $exe"
-        } else {
-            Write-Log "Required binary missing: $exe" "ERROR"
+    try {
+        # Download
+        if (-not (Download-File -Url $ffmpegUrl -Destination $zipPath -Description "FFmpeg")) {
             return $false
         }
-    }
 
-    # Cleanup
-    Remove-Item -Force -Path $zipPath -ErrorAction SilentlyContinue
-    Remove-Item -Recurse -Force -Path $extractDir -ErrorAction SilentlyContinue
+        # Extract
+        if (-not (Expand-ZipFile -ZipPath $zipPath -DestinationPath $extractDir)) {
+            return $false
+        }
+
+        # Find ffmpeg.exe and ffprobe.exe in extracted files
+        $ffmpegExe = Get-ChildItem -Path $extractDir -Filter "ffmpeg.exe" -Recurse | Select-Object -First 1
+        $ffprobeExe = Get-ChildItem -Path $extractDir -Filter "ffprobe.exe" -Recurse | Select-Object -First 1
+
+        if (-not $ffmpegExe) {
+            Write-Log "ffmpeg.exe not found in extracted archive" "ERROR"
+            return $false
+        }
+
+        Copy-Item -Path $ffmpegExe.FullName -Destination $destFfmpeg -Force
+        Write-Log "Installed: $destFfmpeg"
+
+        if ($ffprobeExe) {
+            Copy-Item -Path $ffprobeExe.FullName -Destination $destFfprobe -Force
+            Write-Log "Installed: $destFfprobe"
+        }
+
+        # Verify installation of both binaries
+        foreach ($exe in @($destFfmpeg, $destFfprobe)) {
+            if (Test-Path $exe) {
+                $process = Start-Process -FilePath $exe -ArgumentList "-version" -NoNewWindow -PassThru -Wait
+                if ($process.ExitCode -ne 0) {
+                    Write-Log "Verification failed for $exe (ExitCode: $($process.ExitCode))" "ERROR"
+                    return $false
+                }
+                Write-Log "Verified: $exe"
+            } else {
+                Write-Log "Required binary missing: $exe" "ERROR"
+                return $false
+            }
+        }
+    }
+    catch {
+        Write-Log "Error during FFmpeg installation: $_" "ERROR"
+        return $false
+    }
+    finally {
+        # Cleanup
+        Remove-Item -Force -Path $zipPath -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force -Path $extractDir -ErrorAction SilentlyContinue
+    }
 
     Write-Log "FFmpeg installation complete"
     return $true

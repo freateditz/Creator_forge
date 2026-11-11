@@ -157,17 +157,38 @@ class NativeHostService {
   // ── Browser detection ────────────────────────────────────────────────────────
 
   Future<List<BrowserInfo>> detectBrowsers() async {
-    if (!Platform.isWindows) return [];
-
     final results = <BrowserInfo>[];
-    for (final entry in _browserAppPaths.entries) {
-      final id = entry.key;
-      // Check HKLM first; fall back to HKCU.
-      var execPath = await _readRegistryDefault('HKLM', entry.value);
-      execPath ??= await _readRegistryDefault('HKCU', entry.value);
-      results.add(
-        BrowserInfo(id: id, name: _browserNames[id]!, execPath: execPath),
-      );
+    if (Platform.isWindows) {
+      for (final entry in _browserAppPaths.entries) {
+        final id = entry.key;
+        // Check HKLM first; fall back to HKCU.
+        var execPath = await _readRegistryDefault('HKLM', entry.value);
+        execPath ??= await _readRegistryDefault('HKCU', entry.value);
+        results.add(
+          BrowserInfo(id: id, name: _browserNames[id]!, execPath: execPath),
+        );
+      }
+    } else if (Platform.isMacOS) {
+      const macApps = {
+        'edge': '/Applications/Microsoft Edge.app',
+        'chrome': '/Applications/Google Chrome.app',
+        'brave': '/Applications/Brave Browser.app',
+      };
+      for (final entry in macApps.entries) {
+        final id = entry.key;
+        final appDir = Directory(entry.value);
+        String? execPath;
+        if (appDir.existsSync()) {
+          execPath = entry.value;
+        }
+        results.add(
+          BrowserInfo(
+            id: id,
+            name: _browserNames[id] ?? id,
+            execPath: execPath,
+          ),
+        );
+      }
     }
     return results;
   }
