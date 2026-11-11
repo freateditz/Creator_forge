@@ -46,9 +46,11 @@ void main() {
         expect(provisioner.isFfmpegProvisioned, isFalse);
       });
 
-      test('returns true when ffmpeg binary exists with non-zero size', () {
+      test('returns true when ffmpeg and ffprobe binaries exist with non-zero size', () {
         final f = File(provisioner.ffmpegPath)..createSync();
         f.writeAsBytesSync([0x7f, 0x45, 0x4c, 0x46]);
+        final pr = File(provisioner.ffprobePath)..createSync();
+        pr.writeAsBytesSync([0x7f, 0x45, 0x4c, 0x46]);
         expect(provisioner.isFfmpegProvisioned, isTrue);
       });
     });

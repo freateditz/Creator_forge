@@ -22,9 +22,11 @@ class DependencyProvisioner {
   static const _ytDlpMacosUrl =
       'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos';
 
-  // FFmpeg for Windows — BtbN GPL build (ffmpeg + ffprobe)
-  static const _ffmpegWindowsZipUrl =
-      'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip';
+  // FFmpeg for Windows — BtbN GPL static build (ffmpeg + ffprobe)
+  static const _ffmpegWindowsX64Url =
+      'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip';
+  static const _ffmpegWindowsArm64Url =
+      'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-winarm64-gpl.zip';
 
   // FFmpeg for macOS (Apple Silicon) — from GitHub releases (evermeet.cx is gone)
   // Using an XZ-compressed static build from the yt-dlp/FFmpeg-Builds mirror.
@@ -86,7 +88,11 @@ class DependencyProvisioner {
 
   bool get isFfmpegProvisioned {
     final f = File(ffmpegPath);
-    return f.existsSync() && f.statSync().size > 0;
+    final pr = File(ffprobePath);
+    return f.existsSync() &&
+        f.statSync().size > 0 &&
+        pr.existsSync() &&
+        pr.statSync().size > 0;
   }
 
   /// Downloads FFmpeg to [binDir].
@@ -117,18 +123,32 @@ class DependencyProvisioner {
     }
   }
 
+  bool _isWindowsArm64() {
+    try {
+      final arch =
+          (Platform.environment['PROCESSOR_ARCHITEW6432'] ??
+                  Platform.environment['PROCESSOR_ARCHITECTURE'] ??
+                  '')
+              .toLowerCase();
+      return arch.contains('arm');
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<String> _provisionFfmpegWindows({
     void Function(double progress)? onProgress,
     void Function(String stage)? onStage,
   }) async {
+    final isArm = _isWindowsArm64();
+    final url = isArm ? _ffmpegWindowsArm64Url : _ffmpegWindowsX64Url;
     final zipPath = p.join(binDir, '_ffmpeg_download.zip');
-    _log.info('Downloading FFmpeg from: $_ffmpegWindowsZipUrl');
-    onStage?.call('Downloading');
-    await _downloadFile(
-      url: _ffmpegWindowsZipUrl,
-      destPath: zipPath,
-      onProgress: onProgress,
+
+    _log.info(
+      'Downloading FFmpeg for Windows (${isArm ? "ARM64" : "x64"}) from: $url',
     );
+    onStage?.call('Downloading');
+    await _downloadFile(url: url, destPath: zipPath, onProgress: onProgress);
 
     _log.info('Extracting FFmpeg…');
     onStage?.call('Extracting');
@@ -139,24 +159,42 @@ class DependencyProvisioner {
       await File(zipPath).delete();
     } catch (_) {}
 
-    if (!File(ffmpegPath).existsSync()) {
-      throw StateError(
-        'FFmpeg extraction completed but ffmpeg.exe was not found at $ffmpegPath',
-      );
-    }
-
-    // Verify ffmpeg runs
+    // Verify both ffmpeg and ffprobe exist and run successfully
     onStage?.call('Verifying');
     for (final exe in [ffmpegPath, ffprobePath]) {
-      if (File(exe).existsSync()) {
-        final r = await Process.run(exe, ['-version'], runInShell: false);
-        if (r.exitCode != 0) {
-          throw StateError('FFmpeg verification failed for $exe: ${r.stderr}');
-        }
+      final file = File(exe);
+      if (!file.existsSync()) {
+        throw StateError(
+          'FFmpeg extraction completed but expected binary was not found at $exe',
+        );
+      }
+      final size = file.statSync().size;
+      _log.info('Verifying binary at $exe (size: $size bytes)');
+
+      final r = await Process.run(exe, ['-version'], runInShell: false);
+      _log.info('$exe -version exitCode: ${r.exitCode}');
+
+      if (r.exitCode != 0) {
+        final stdoutStr = r.stdout.toString().trim();
+        final stderrStr = r.stderr.toString().trim();
+        _log.severe(
+          'FFmpeg verification failed for $exe.\n'
+          'Exit Code: ${r.exitCode}\n'
+          'Stdout: $stdoutStr\n'
+          'Stderr: $stderrStr',
+        );
+        throw StateError(
+          'FFmpeg verification failed for $exe.\n'
+          'Path: $exe\n'
+          'File exists: true, Size: $size bytes\n'
+          'Exit Code: ${r.exitCode}\n'
+          'Stdout: $stdoutStr\n'
+          'Stderr: $stderrStr',
+        );
       }
     }
 
-    _log.info('FFmpeg provisioned at: $ffmpegPath');
+    _log.info('FFmpeg & ffprobe provisioned successfully at: $binDir');
     return ffmpegPath;
   }
 

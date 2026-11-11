@@ -164,8 +164,8 @@ function Install-Ffmpeg {
 
     Write-Log "=== Installing FFmpeg ==="
 
-    # BtbN FFmpeg build URL (GPL-shared, includes ffmpeg + ffprobe)
-    $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip"
+    # BtbN FFmpeg build URL (GPL static build, includes ffmpeg + ffprobe)
+    $ffmpegUrl = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
     $zipPath = Join-Path $env:TEMP "ffmpeg-download.zip"
     $extractDir = Join-Path $env:TEMP "ffmpeg-extracted"
 
@@ -205,13 +205,19 @@ function Install-Ffmpeg {
         Write-Log "Installed: $destFfprobe"
     }
 
-    # Verify installation
-    try {
-        $version = & $destFfmpeg -version 2>&1 | Select-Object -First 1
-        Write-Log "FFmpeg version: $version"
-    }
-    catch {
-        Write-Log "Warning: Could not verify FFmpeg version" "WARN"
+    # Verify installation of both binaries
+    foreach ($exe in @($destFfmpeg, $destFfprobe)) {
+        if (Test-Path $exe) {
+            $process = Start-Process -FilePath $exe -ArgumentList "-version" -NoNewWindow -PassThru -Wait
+            if ($process.ExitCode -ne 0) {
+                Write-Log "Verification failed for $exe (ExitCode: $($process.ExitCode))" "ERROR"
+                return $false
+            }
+            Write-Log "Verified: $exe"
+        } else {
+            Write-Log "Required binary missing: $exe" "ERROR"
+            return $false
+        }
     }
 
     # Cleanup

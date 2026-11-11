@@ -92,7 +92,7 @@ jobs:
           Write-Host "Downloading FFmpeg..."
           try {
             $zipPath = "build\windows\x64\runner\Release\_ffmpeg.zip"
-            Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl-shared.zip" -OutFile $zipPath
+            Invoke-WebRequest -Uri "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" -OutFile $zipPath
             
             $extractDir = "build\windows\x64\runner\Release\_ffmpeg_ext"
             Expand-Archive -LiteralPath $zipPath -DestinationPath $extractDir -Force

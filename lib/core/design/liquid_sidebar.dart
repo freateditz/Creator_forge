@@ -140,34 +140,25 @@ class _LiquidSidebarState extends State<LiquidSidebar>
     // and add the list's padding offset.
     final itemGlobalPos = itemBox.localToGlobal(Offset.zero);
 
-    // We want the top of the capsule to align with the top of the item tile.
-    // The Stack's top is the top of the Expanded region (below logo + divider).
-    // We find it by locating any ancestor with the Stack's RenderBox.
-    // Simplest: convert global → Stack-local using the Stack's key.
-    // Since we don't have a key on the Stack, we use the Column's RenderBox
-    // which is `this.context.findRenderObject()`. The Stack is a direct child.
-    final columnBox = context.findRenderObject() as RenderBox?;
-    if (columnBox == null) return;
+    final stackBox = _stackKey.currentContext?.findRenderObject() as RenderBox?;
+    if (stackBox == null) return;
 
-    // The Stack is Expanded inside the Column. Its top in global space
-    // equals the Column's top plus any logo/header height. Rather than
-    // computing that, convert the item's global position to Column-local,
-    // then subtract the Column's padding-top (8px per ListView padding).
-    final itemLocalToColumn = columnBox.globalToLocal(itemGlobalPos);
+    final itemLocalToStack = stackBox.globalToLocal(itemGlobalPos);
 
     // Store current animated Y before changing targets (for smooth chaining)
     final currentT = Curves.easeOutCubic.transform(_controller.value);
     _fromY = _fromY + (_toY - _fromY) * currentT;
     if (_fromY < 0) {
       // First time: snap directly to target with no animation from 0
-      _fromY = itemLocalToColumn.dy;
+      _fromY = itemLocalToStack.dy;
     }
-    _toY = itemLocalToColumn.dy;
+    _toY = itemLocalToStack.dy;
     _controller.forward(from: 0);
     setState(() {});
   }
 
   final List<GlobalKey> _itemKeys = [];
+  final GlobalKey _stackKey = GlobalKey();
 
   @override
   void dispose() {
@@ -222,6 +213,7 @@ class _LiquidSidebarState extends State<LiquidSidebar>
     children.add(
       Expanded(
         child: Stack(
+          key: _stackKey,
           children: [
             // The liquid indicator (animated capsule)
             AnimatedBuilder(
