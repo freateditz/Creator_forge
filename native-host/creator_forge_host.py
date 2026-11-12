@@ -237,6 +237,56 @@ def connect_to_app() -> socket.socket | None:
     return None
 
 
+def launch_desktop_app() -> bool:
+    """Attempt to launch the CreatorForge desktop application automatically."""
+    try:
+        if sys.platform == "win32":
+            candidates = [
+                os.path.join(os.environ.get("PROGRAMFILES", "C:\\Program Files"), "CreatorForge", "creator_forge.exe"),
+                os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "CreatorForge", "creator_forge.exe"),
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "creator_forge.exe"),
+            ]
+            for exe in candidates:
+                if exe and os.path.exists(exe):
+                    subprocess.Popen([exe])
+                    return True
+            subprocess.Popen(["start", "creator_forge"], shell=True)
+            return True
+        elif sys.platform == "darwin":
+            candidates = [
+                "/Applications/CreatorForge.app/Contents/MacOS/CreatorForge",
+                os.path.expanduser("~/Applications/CreatorForge.app/Contents/MacOS/CreatorForge"),
+            ]
+            for app_bin in candidates:
+                if os.path.exists(app_bin):
+                    subprocess.Popen([app_bin])
+                    return True
+            subprocess.Popen(["open", "-a", "CreatorForge"])
+            return True
+        else:
+            subprocess.Popen(["creator-forge"])
+            return True
+    except Exception as exc:
+        _log(f"Failed to launch desktop app: {exc}")
+        return False
+
+
+def ensure_connected() -> socket.socket | None:
+    sock = connect_to_app()
+    if sock is not None:
+        return sock
+
+    _log("CreatorForge not running. Attempting automatic launch...")
+    if launch_desktop_app():
+        for _ in range(30):  # wait up to 6 seconds (30 * 0.2s)
+            time.sleep(0.2)
+            sock = connect_to_app()
+            if sock is not None:
+                _log("Successfully connected to newly launched CreatorForge instance.")
+                return sock
+    return None
+
+
 # ── IPC send / receive ────────────────────────────────────────────────────────
 
 def _recv_line(sock: socket.socket) -> str | None:
@@ -284,7 +334,7 @@ def main() -> None:
 
     app_socket: socket.socket | None = connect_to_app()
     if app_socket is None:
-        _log("CreatorForge not running; will return APP_NOT_RUNNING for all requests.")
+        _log("CreatorForge not running; will attempt auto-launch on request.")
 
     while True:
         try:
@@ -304,8 +354,7 @@ def main() -> None:
         request_id = msg.get("requestId") or ""
 
         if app_socket is None:
-            # Attempt reconnect once before giving up.
-            app_socket = connect_to_app()
+            app_socket = ensure_connected()
 
         if app_socket is None:
             nm_error(request_id, APP_NOT_RUNNING_ERROR)

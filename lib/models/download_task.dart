@@ -33,6 +33,9 @@ class DownloadTask extends Equatable {
   final int? downloadedBytes;
   final String? errorMessage;
   final String? outputPath;
+  final String? eTag;
+  final String? lastModified;
+  final String? profile;
   final DateTime createdAt;
   final DateTime? completedAt;
 
@@ -56,6 +59,9 @@ class DownloadTask extends Equatable {
     this.downloadedBytes,
     this.errorMessage,
     this.outputPath,
+    this.eTag,
+    this.lastModified,
+    this.profile,
     required this.createdAt,
     this.completedAt,
   });
@@ -80,6 +86,9 @@ class DownloadTask extends Equatable {
     int? downloadedBytes,
     String? errorMessage,
     String? outputPath,
+    String? eTag,
+    String? lastModified,
+    String? profile,
     DateTime? createdAt,
     DateTime? completedAt,
   }) {
@@ -103,11 +112,23 @@ class DownloadTask extends Equatable {
       downloadedBytes: downloadedBytes ?? this.downloadedBytes,
       errorMessage: errorMessage ?? this.errorMessage,
       outputPath: outputPath ?? this.outputPath,
+      eTag: eTag ?? this.eTag,
+      lastModified: lastModified ?? this.lastModified,
+      profile: profile ?? this.profile,
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? this.completedAt,
     );
   }
 
   @override
-  List<Object?> get props => [id, url, status, progress];
+  List<Object?> get props => [
+        id,
+        url,
+        title,
+        status,
+        progress,
+        eTag,
+        lastModified,
+        profile,
+      ];
 }

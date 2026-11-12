@@ -109,11 +109,23 @@ export interface DownloadRequestMessage extends BaseMessage {
   durationSeconds?: number;
 }
 
+export interface OrdinaryFileDownloadMessage extends BaseMessage {
+  type: "ORDINARY_FILE_DOWNLOAD";
+  url: string;
+  filename?: string;
+  mimeType?: string;
+  fileSize?: number;
+  referrer?: string;
+  pageUrl?: string;
+  pageTitle?: string;
+}
+
 export type OutgoingMessage =
   | PingMessage
   | ConnectionStatusMessage
   | AnalyzeMediaMessage
-  | DownloadRequestMessage;
+  | DownloadRequestMessage
+  | OrdinaryFileDownloadMessage;
 
 // ── Incoming messages (Flutter → native host → extension) ────────────────────
 

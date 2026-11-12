@@ -127,6 +127,37 @@ class $DownloadHistoryTableTable extends DownloadHistoryTable
     requiredDuringInsert: false,
     defaultValue: const Constant('completed'),
   );
+  static const VerificationMeta _eTagMeta = const VerificationMeta('eTag');
+  @override
+  late final GeneratedColumn<String> eTag = GeneratedColumn<String>(
+    'e_tag',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastModifiedMeta = const VerificationMeta(
+    'lastModified',
+  );
+  @override
+  late final GeneratedColumn<String> lastModified = GeneratedColumn<String>(
+    'last_modified',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _profileMeta = const VerificationMeta(
+    'profile',
+  );
+  @override
+  late final GeneratedColumn<String> profile = GeneratedColumn<String>(
+    'profile',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _metadataJsonMeta = const VerificationMeta(
     'metadataJson',
   );
@@ -173,6 +204,9 @@ class $DownloadHistoryTableTable extends DownloadHistoryTable
     fileSizeBytes,
     durationSeconds,
     status,
+    eTag,
+    lastModified,
+    profile,
     metadataJson,
     createdAt,
     completedAt,
@@ -268,6 +302,27 @@ class $DownloadHistoryTableTable extends DownloadHistoryTable
         status.isAcceptableOrUnknown(data['status']!, _statusMeta),
       );
     }
+    if (data.containsKey('e_tag')) {
+      context.handle(
+        _eTagMeta,
+        eTag.isAcceptableOrUnknown(data['e_tag']!, _eTagMeta),
+      );
+    }
+    if (data.containsKey('last_modified')) {
+      context.handle(
+        _lastModifiedMeta,
+        lastModified.isAcceptableOrUnknown(
+          data['last_modified']!,
+          _lastModifiedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('profile')) {
+      context.handle(
+        _profileMeta,
+        profile.isAcceptableOrUnknown(data['profile']!, _profileMeta),
+      );
+    }
     if (data.containsKey('metadata_json')) {
       context.handle(
         _metadataJsonMeta,
@@ -350,6 +405,18 @@ class $DownloadHistoryTableTable extends DownloadHistoryTable
         DriftSqlType.string,
         data['${effectivePrefix}status'],
       )!,
+      eTag: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}e_tag'],
+      ),
+      lastModified: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_modified'],
+      ),
+      profile: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}profile'],
+      ),
       metadataJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}metadata_json'],
@@ -384,6 +451,9 @@ class DownloadHistoryTableData extends DataClass
   final int? fileSizeBytes;
   final int? durationSeconds;
   final String status;
+  final String? eTag;
+  final String? lastModified;
+  final String? profile;
   final String? metadataJson;
   final DateTime createdAt;
   final DateTime? completedAt;
@@ -399,6 +469,9 @@ class DownloadHistoryTableData extends DataClass
     this.fileSizeBytes,
     this.durationSeconds,
     required this.status,
+    this.eTag,
+    this.lastModified,
+    this.profile,
     this.metadataJson,
     required this.createdAt,
     this.completedAt,
@@ -425,6 +498,15 @@ class DownloadHistoryTableData extends DataClass
       map['duration_seconds'] = Variable<int>(durationSeconds);
     }
     map['status'] = Variable<String>(status);
+    if (!nullToAbsent || eTag != null) {
+      map['e_tag'] = Variable<String>(eTag);
+    }
+    if (!nullToAbsent || lastModified != null) {
+      map['last_modified'] = Variable<String>(lastModified);
+    }
+    if (!nullToAbsent || profile != null) {
+      map['profile'] = Variable<String>(profile);
+    }
     if (!nullToAbsent || metadataJson != null) {
       map['metadata_json'] = Variable<String>(metadataJson);
     }
@@ -456,6 +538,13 @@ class DownloadHistoryTableData extends DataClass
           ? const Value.absent()
           : Value(durationSeconds),
       status: Value(status),
+      eTag: eTag == null && nullToAbsent ? const Value.absent() : Value(eTag),
+      lastModified: lastModified == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastModified),
+      profile: profile == null && nullToAbsent
+          ? const Value.absent()
+          : Value(profile),
       metadataJson: metadataJson == null && nullToAbsent
           ? const Value.absent()
           : Value(metadataJson),
@@ -483,6 +572,9 @@ class DownloadHistoryTableData extends DataClass
       fileSizeBytes: serializer.fromJson<int?>(json['fileSizeBytes']),
       durationSeconds: serializer.fromJson<int?>(json['durationSeconds']),
       status: serializer.fromJson<String>(json['status']),
+      eTag: serializer.fromJson<String?>(json['eTag']),
+      lastModified: serializer.fromJson<String?>(json['lastModified']),
+      profile: serializer.fromJson<String?>(json['profile']),
       metadataJson: serializer.fromJson<String?>(json['metadataJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
@@ -503,6 +595,9 @@ class DownloadHistoryTableData extends DataClass
       'fileSizeBytes': serializer.toJson<int?>(fileSizeBytes),
       'durationSeconds': serializer.toJson<int?>(durationSeconds),
       'status': serializer.toJson<String>(status),
+      'eTag': serializer.toJson<String?>(eTag),
+      'lastModified': serializer.toJson<String?>(lastModified),
+      'profile': serializer.toJson<String?>(profile),
       'metadataJson': serializer.toJson<String?>(metadataJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
@@ -521,6 +616,9 @@ class DownloadHistoryTableData extends DataClass
     Value<int?> fileSizeBytes = const Value.absent(),
     Value<int?> durationSeconds = const Value.absent(),
     String? status,
+    Value<String?> eTag = const Value.absent(),
+    Value<String?> lastModified = const Value.absent(),
+    Value<String?> profile = const Value.absent(),
     Value<String?> metadataJson = const Value.absent(),
     DateTime? createdAt,
     Value<DateTime?> completedAt = const Value.absent(),
@@ -540,6 +638,9 @@ class DownloadHistoryTableData extends DataClass
         ? durationSeconds.value
         : this.durationSeconds,
     status: status ?? this.status,
+    eTag: eTag.present ? eTag.value : this.eTag,
+    lastModified: lastModified.present ? lastModified.value : this.lastModified,
+    profile: profile.present ? profile.value : this.profile,
     metadataJson: metadataJson.present ? metadataJson.value : this.metadataJson,
     createdAt: createdAt ?? this.createdAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
@@ -569,6 +670,11 @@ class DownloadHistoryTableData extends DataClass
           ? data.durationSeconds.value
           : this.durationSeconds,
       status: data.status.present ? data.status.value : this.status,
+      eTag: data.eTag.present ? data.eTag.value : this.eTag,
+      lastModified: data.lastModified.present
+          ? data.lastModified.value
+          : this.lastModified,
+      profile: data.profile.present ? data.profile.value : this.profile,
       metadataJson: data.metadataJson.present
           ? data.metadataJson.value
           : this.metadataJson,
@@ -593,6 +699,9 @@ class DownloadHistoryTableData extends DataClass
           ..write('fileSizeBytes: $fileSizeBytes, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('status: $status, ')
+          ..write('eTag: $eTag, ')
+          ..write('lastModified: $lastModified, ')
+          ..write('profile: $profile, ')
           ..write('metadataJson: $metadataJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('completedAt: $completedAt')
@@ -613,6 +722,9 @@ class DownloadHistoryTableData extends DataClass
     fileSizeBytes,
     durationSeconds,
     status,
+    eTag,
+    lastModified,
+    profile,
     metadataJson,
     createdAt,
     completedAt,
@@ -632,6 +744,9 @@ class DownloadHistoryTableData extends DataClass
           other.fileSizeBytes == this.fileSizeBytes &&
           other.durationSeconds == this.durationSeconds &&
           other.status == this.status &&
+          other.eTag == this.eTag &&
+          other.lastModified == this.lastModified &&
+          other.profile == this.profile &&
           other.metadataJson == this.metadataJson &&
           other.createdAt == this.createdAt &&
           other.completedAt == this.completedAt);
@@ -650,6 +765,9 @@ class DownloadHistoryTableCompanion
   final Value<int?> fileSizeBytes;
   final Value<int?> durationSeconds;
   final Value<String> status;
+  final Value<String?> eTag;
+  final Value<String?> lastModified;
+  final Value<String?> profile;
   final Value<String?> metadataJson;
   final Value<DateTime> createdAt;
   final Value<DateTime?> completedAt;
@@ -665,6 +783,9 @@ class DownloadHistoryTableCompanion
     this.fileSizeBytes = const Value.absent(),
     this.durationSeconds = const Value.absent(),
     this.status = const Value.absent(),
+    this.eTag = const Value.absent(),
+    this.lastModified = const Value.absent(),
+    this.profile = const Value.absent(),
     this.metadataJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.completedAt = const Value.absent(),
@@ -681,6 +802,9 @@ class DownloadHistoryTableCompanion
     this.fileSizeBytes = const Value.absent(),
     this.durationSeconds = const Value.absent(),
     this.status = const Value.absent(),
+    this.eTag = const Value.absent(),
+    this.lastModified = const Value.absent(),
+    this.profile = const Value.absent(),
     this.metadataJson = const Value.absent(),
     required DateTime createdAt,
     this.completedAt = const Value.absent(),
@@ -699,6 +823,9 @@ class DownloadHistoryTableCompanion
     Expression<int>? fileSizeBytes,
     Expression<int>? durationSeconds,
     Expression<String>? status,
+    Expression<String>? eTag,
+    Expression<String>? lastModified,
+    Expression<String>? profile,
     Expression<String>? metadataJson,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? completedAt,
@@ -715,6 +842,9 @@ class DownloadHistoryTableCompanion
       if (fileSizeBytes != null) 'file_size_bytes': fileSizeBytes,
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
       if (status != null) 'status': status,
+      if (eTag != null) 'e_tag': eTag,
+      if (lastModified != null) 'last_modified': lastModified,
+      if (profile != null) 'profile': profile,
       if (metadataJson != null) 'metadata_json': metadataJson,
       if (createdAt != null) 'created_at': createdAt,
       if (completedAt != null) 'completed_at': completedAt,
@@ -733,6 +863,9 @@ class DownloadHistoryTableCompanion
     Value<int?>? fileSizeBytes,
     Value<int?>? durationSeconds,
     Value<String>? status,
+    Value<String?>? eTag,
+    Value<String?>? lastModified,
+    Value<String?>? profile,
     Value<String?>? metadataJson,
     Value<DateTime>? createdAt,
     Value<DateTime?>? completedAt,
@@ -749,6 +882,9 @@ class DownloadHistoryTableCompanion
       fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
       durationSeconds: durationSeconds ?? this.durationSeconds,
       status: status ?? this.status,
+      eTag: eTag ?? this.eTag,
+      lastModified: lastModified ?? this.lastModified,
+      profile: profile ?? this.profile,
       metadataJson: metadataJson ?? this.metadataJson,
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? this.completedAt,
@@ -791,6 +927,15 @@ class DownloadHistoryTableCompanion
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
+    if (eTag.present) {
+      map['e_tag'] = Variable<String>(eTag.value);
+    }
+    if (lastModified.present) {
+      map['last_modified'] = Variable<String>(lastModified.value);
+    }
+    if (profile.present) {
+      map['profile'] = Variable<String>(profile.value);
+    }
     if (metadataJson.present) {
       map['metadata_json'] = Variable<String>(metadataJson.value);
     }
@@ -817,9 +962,541 @@ class DownloadHistoryTableCompanion
           ..write('fileSizeBytes: $fileSizeBytes, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('status: $status, ')
+          ..write('eTag: $eTag, ')
+          ..write('lastModified: $lastModified, ')
+          ..write('profile: $profile, ')
           ..write('metadataJson: $metadataJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('completedAt: $completedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DownloadSegmentsTableTable extends DownloadSegmentsTable
+    with TableInfo<$DownloadSegmentsTableTable, DownloadSegmentsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadSegmentsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES download_history (task_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _segmentIndexMeta = const VerificationMeta(
+    'segmentIndex',
+  );
+  @override
+  late final GeneratedColumn<int> segmentIndex = GeneratedColumn<int>(
+    'segment_index',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startOffsetMeta = const VerificationMeta(
+    'startOffset',
+  );
+  @override
+  late final GeneratedColumn<int> startOffset = GeneratedColumn<int>(
+    'start_offset',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endOffsetMeta = const VerificationMeta(
+    'endOffset',
+  );
+  @override
+  late final GeneratedColumn<int> endOffset = GeneratedColumn<int>(
+    'end_offset',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bytesDownloadedMeta = const VerificationMeta(
+    'bytesDownloaded',
+  );
+  @override
+  late final GeneratedColumn<int> bytesDownloaded = GeneratedColumn<int>(
+    'bytes_downloaded',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _lastUpdatedAtMeta = const VerificationMeta(
+    'lastUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'last_updated_at',
+        aliasedName,
+        false,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: true,
+      );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    taskId,
+    segmentIndex,
+    startOffset,
+    endOffset,
+    bytesDownloaded,
+    status,
+    lastUpdatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'download_segments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DownloadSegmentsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('segment_index')) {
+      context.handle(
+        _segmentIndexMeta,
+        segmentIndex.isAcceptableOrUnknown(
+          data['segment_index']!,
+          _segmentIndexMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_segmentIndexMeta);
+    }
+    if (data.containsKey('start_offset')) {
+      context.handle(
+        _startOffsetMeta,
+        startOffset.isAcceptableOrUnknown(
+          data['start_offset']!,
+          _startOffsetMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_startOffsetMeta);
+    }
+    if (data.containsKey('end_offset')) {
+      context.handle(
+        _endOffsetMeta,
+        endOffset.isAcceptableOrUnknown(data['end_offset']!, _endOffsetMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_endOffsetMeta);
+    }
+    if (data.containsKey('bytes_downloaded')) {
+      context.handle(
+        _bytesDownloadedMeta,
+        bytesDownloaded.isAcceptableOrUnknown(
+          data['bytes_downloaded']!,
+          _bytesDownloadedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    if (data.containsKey('last_updated_at')) {
+      context.handle(
+        _lastUpdatedAtMeta,
+        lastUpdatedAt.isAcceptableOrUnknown(
+          data['last_updated_at']!,
+          _lastUpdatedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastUpdatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {taskId, segmentIndex},
+  ];
+  @override
+  DownloadSegmentsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadSegmentsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      )!,
+      segmentIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}segment_index'],
+      )!,
+      startOffset: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}start_offset'],
+      )!,
+      endOffset: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}end_offset'],
+      )!,
+      bytesDownloaded: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bytes_downloaded'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      lastUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DownloadSegmentsTableTable createAlias(String alias) {
+    return $DownloadSegmentsTableTable(attachedDatabase, alias);
+  }
+}
+
+class DownloadSegmentsTableData extends DataClass
+    implements Insertable<DownloadSegmentsTableData> {
+  final int id;
+  final String taskId;
+  final int segmentIndex;
+  final int startOffset;
+  final int endOffset;
+  final int bytesDownloaded;
+  final String status;
+  final DateTime lastUpdatedAt;
+  const DownloadSegmentsTableData({
+    required this.id,
+    required this.taskId,
+    required this.segmentIndex,
+    required this.startOffset,
+    required this.endOffset,
+    required this.bytesDownloaded,
+    required this.status,
+    required this.lastUpdatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['task_id'] = Variable<String>(taskId);
+    map['segment_index'] = Variable<int>(segmentIndex);
+    map['start_offset'] = Variable<int>(startOffset);
+    map['end_offset'] = Variable<int>(endOffset);
+    map['bytes_downloaded'] = Variable<int>(bytesDownloaded);
+    map['status'] = Variable<String>(status);
+    map['last_updated_at'] = Variable<DateTime>(lastUpdatedAt);
+    return map;
+  }
+
+  DownloadSegmentsTableCompanion toCompanion(bool nullToAbsent) {
+    return DownloadSegmentsTableCompanion(
+      id: Value(id),
+      taskId: Value(taskId),
+      segmentIndex: Value(segmentIndex),
+      startOffset: Value(startOffset),
+      endOffset: Value(endOffset),
+      bytesDownloaded: Value(bytesDownloaded),
+      status: Value(status),
+      lastUpdatedAt: Value(lastUpdatedAt),
+    );
+  }
+
+  factory DownloadSegmentsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadSegmentsTableData(
+      id: serializer.fromJson<int>(json['id']),
+      taskId: serializer.fromJson<String>(json['taskId']),
+      segmentIndex: serializer.fromJson<int>(json['segmentIndex']),
+      startOffset: serializer.fromJson<int>(json['startOffset']),
+      endOffset: serializer.fromJson<int>(json['endOffset']),
+      bytesDownloaded: serializer.fromJson<int>(json['bytesDownloaded']),
+      status: serializer.fromJson<String>(json['status']),
+      lastUpdatedAt: serializer.fromJson<DateTime>(json['lastUpdatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'taskId': serializer.toJson<String>(taskId),
+      'segmentIndex': serializer.toJson<int>(segmentIndex),
+      'startOffset': serializer.toJson<int>(startOffset),
+      'endOffset': serializer.toJson<int>(endOffset),
+      'bytesDownloaded': serializer.toJson<int>(bytesDownloaded),
+      'status': serializer.toJson<String>(status),
+      'lastUpdatedAt': serializer.toJson<DateTime>(lastUpdatedAt),
+    };
+  }
+
+  DownloadSegmentsTableData copyWith({
+    int? id,
+    String? taskId,
+    int? segmentIndex,
+    int? startOffset,
+    int? endOffset,
+    int? bytesDownloaded,
+    String? status,
+    DateTime? lastUpdatedAt,
+  }) => DownloadSegmentsTableData(
+    id: id ?? this.id,
+    taskId: taskId ?? this.taskId,
+    segmentIndex: segmentIndex ?? this.segmentIndex,
+    startOffset: startOffset ?? this.startOffset,
+    endOffset: endOffset ?? this.endOffset,
+    bytesDownloaded: bytesDownloaded ?? this.bytesDownloaded,
+    status: status ?? this.status,
+    lastUpdatedAt: lastUpdatedAt ?? this.lastUpdatedAt,
+  );
+  DownloadSegmentsTableData copyWithCompanion(
+    DownloadSegmentsTableCompanion data,
+  ) {
+    return DownloadSegmentsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      segmentIndex: data.segmentIndex.present
+          ? data.segmentIndex.value
+          : this.segmentIndex,
+      startOffset: data.startOffset.present
+          ? data.startOffset.value
+          : this.startOffset,
+      endOffset: data.endOffset.present ? data.endOffset.value : this.endOffset,
+      bytesDownloaded: data.bytesDownloaded.present
+          ? data.bytesDownloaded.value
+          : this.bytesDownloaded,
+      status: data.status.present ? data.status.value : this.status,
+      lastUpdatedAt: data.lastUpdatedAt.present
+          ? data.lastUpdatedAt.value
+          : this.lastUpdatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadSegmentsTableData(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('segmentIndex: $segmentIndex, ')
+          ..write('startOffset: $startOffset, ')
+          ..write('endOffset: $endOffset, ')
+          ..write('bytesDownloaded: $bytesDownloaded, ')
+          ..write('status: $status, ')
+          ..write('lastUpdatedAt: $lastUpdatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    taskId,
+    segmentIndex,
+    startOffset,
+    endOffset,
+    bytesDownloaded,
+    status,
+    lastUpdatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadSegmentsTableData &&
+          other.id == this.id &&
+          other.taskId == this.taskId &&
+          other.segmentIndex == this.segmentIndex &&
+          other.startOffset == this.startOffset &&
+          other.endOffset == this.endOffset &&
+          other.bytesDownloaded == this.bytesDownloaded &&
+          other.status == this.status &&
+          other.lastUpdatedAt == this.lastUpdatedAt);
+}
+
+class DownloadSegmentsTableCompanion
+    extends UpdateCompanion<DownloadSegmentsTableData> {
+  final Value<int> id;
+  final Value<String> taskId;
+  final Value<int> segmentIndex;
+  final Value<int> startOffset;
+  final Value<int> endOffset;
+  final Value<int> bytesDownloaded;
+  final Value<String> status;
+  final Value<DateTime> lastUpdatedAt;
+  const DownloadSegmentsTableCompanion({
+    this.id = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.segmentIndex = const Value.absent(),
+    this.startOffset = const Value.absent(),
+    this.endOffset = const Value.absent(),
+    this.bytesDownloaded = const Value.absent(),
+    this.status = const Value.absent(),
+    this.lastUpdatedAt = const Value.absent(),
+  });
+  DownloadSegmentsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String taskId,
+    required int segmentIndex,
+    required int startOffset,
+    required int endOffset,
+    this.bytesDownloaded = const Value.absent(),
+    this.status = const Value.absent(),
+    required DateTime lastUpdatedAt,
+  }) : taskId = Value(taskId),
+       segmentIndex = Value(segmentIndex),
+       startOffset = Value(startOffset),
+       endOffset = Value(endOffset),
+       lastUpdatedAt = Value(lastUpdatedAt);
+  static Insertable<DownloadSegmentsTableData> custom({
+    Expression<int>? id,
+    Expression<String>? taskId,
+    Expression<int>? segmentIndex,
+    Expression<int>? startOffset,
+    Expression<int>? endOffset,
+    Expression<int>? bytesDownloaded,
+    Expression<String>? status,
+    Expression<DateTime>? lastUpdatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (taskId != null) 'task_id': taskId,
+      if (segmentIndex != null) 'segment_index': segmentIndex,
+      if (startOffset != null) 'start_offset': startOffset,
+      if (endOffset != null) 'end_offset': endOffset,
+      if (bytesDownloaded != null) 'bytes_downloaded': bytesDownloaded,
+      if (status != null) 'status': status,
+      if (lastUpdatedAt != null) 'last_updated_at': lastUpdatedAt,
+    });
+  }
+
+  DownloadSegmentsTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? taskId,
+    Value<int>? segmentIndex,
+    Value<int>? startOffset,
+    Value<int>? endOffset,
+    Value<int>? bytesDownloaded,
+    Value<String>? status,
+    Value<DateTime>? lastUpdatedAt,
+  }) {
+    return DownloadSegmentsTableCompanion(
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      segmentIndex: segmentIndex ?? this.segmentIndex,
+      startOffset: startOffset ?? this.startOffset,
+      endOffset: endOffset ?? this.endOffset,
+      bytesDownloaded: bytesDownloaded ?? this.bytesDownloaded,
+      status: status ?? this.status,
+      lastUpdatedAt: lastUpdatedAt ?? this.lastUpdatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (segmentIndex.present) {
+      map['segment_index'] = Variable<int>(segmentIndex.value);
+    }
+    if (startOffset.present) {
+      map['start_offset'] = Variable<int>(startOffset.value);
+    }
+    if (endOffset.present) {
+      map['end_offset'] = Variable<int>(endOffset.value);
+    }
+    if (bytesDownloaded.present) {
+      map['bytes_downloaded'] = Variable<int>(bytesDownloaded.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (lastUpdatedAt.present) {
+      map['last_updated_at'] = Variable<DateTime>(lastUpdatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadSegmentsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('segmentIndex: $segmentIndex, ')
+          ..write('startOffset: $startOffset, ')
+          ..write('endOffset: $endOffset, ')
+          ..write('bytesDownloaded: $bytesDownloaded, ')
+          ..write('status: $status, ')
+          ..write('lastUpdatedAt: $lastUpdatedAt')
           ..write(')'))
         .toString();
   }
@@ -1712,6 +2389,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $DownloadHistoryTableTable downloadHistoryTable =
       $DownloadHistoryTableTable(this);
+  late final $DownloadSegmentsTableTable downloadSegmentsTable =
+      $DownloadSegmentsTableTable(this);
   late final $SettingsTableTable settingsTable = $SettingsTableTable(this);
   late final $ProcessingJobsTableTable processingJobsTable =
       $ProcessingJobsTableTable(this);
@@ -1721,9 +2400,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     downloadHistoryTable,
+    downloadSegmentsTable,
     settingsTable,
     processingJobsTable,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'download_history',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('download_segments', kind: UpdateKind.delete)],
+    ),
+  ]);
 }
 
 typedef $$DownloadHistoryTableTableCreateCompanionBuilder =
@@ -1739,6 +2429,9 @@ typedef $$DownloadHistoryTableTableCreateCompanionBuilder =
       Value<int?> fileSizeBytes,
       Value<int?> durationSeconds,
       Value<String> status,
+      Value<String?> eTag,
+      Value<String?> lastModified,
+      Value<String?> profile,
       Value<String?> metadataJson,
       required DateTime createdAt,
       Value<DateTime?> completedAt,
@@ -1756,10 +2449,55 @@ typedef $$DownloadHistoryTableTableUpdateCompanionBuilder =
       Value<int?> fileSizeBytes,
       Value<int?> durationSeconds,
       Value<String> status,
+      Value<String?> eTag,
+      Value<String?> lastModified,
+      Value<String?> profile,
       Value<String?> metadataJson,
       Value<DateTime> createdAt,
       Value<DateTime?> completedAt,
     });
+
+final class $$DownloadHistoryTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $DownloadHistoryTableTable,
+          DownloadHistoryTableData
+        > {
+  $$DownloadHistoryTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<
+    $DownloadSegmentsTableTable,
+    List<DownloadSegmentsTableData>
+  >
+  _downloadSegmentsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.downloadSegmentsTable,
+        aliasName: 'download_history__task_id__download_segments__task_id',
+      );
+
+  $$DownloadSegmentsTableTableProcessedTableManager
+  get downloadSegmentsTableRefs {
+    final manager =
+        $$DownloadSegmentsTableTableTableManager(
+          $_db,
+          $_db.downloadSegmentsTable,
+        ).filter(
+          (f) => f.taskId.taskId.sqlEquals($_itemColumn<String>('task_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _downloadSegmentsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
 
 class $$DownloadHistoryTableTableFilterComposer
     extends Composer<_$AppDatabase, $DownloadHistoryTableTable> {
@@ -1825,6 +2563,21 @@ class $$DownloadHistoryTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get eTag => $composableBuilder(
+    column: $table.eTag,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastModified => $composableBuilder(
+    column: $table.lastModified,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get profile => $composableBuilder(
+    column: $table.profile,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get metadataJson => $composableBuilder(
     column: $table.metadataJson,
     builder: (column) => ColumnFilters(column),
@@ -1839,6 +2592,32 @@ class $$DownloadHistoryTableTableFilterComposer
     column: $table.completedAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  Expression<bool> downloadSegmentsTableRefs(
+    Expression<bool> Function($$DownloadSegmentsTableTableFilterComposer f) f,
+  ) {
+    final $$DownloadSegmentsTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.taskId,
+          referencedTable: $db.downloadSegmentsTable,
+          getReferencedColumn: (t) => t.taskId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DownloadSegmentsTableTableFilterComposer(
+                $db: $db,
+                $table: $db.downloadSegmentsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$DownloadHistoryTableTableOrderingComposer
@@ -1902,6 +2681,21 @@ class $$DownloadHistoryTableTableOrderingComposer
 
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eTag => $composableBuilder(
+    column: $table.eTag,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastModified => $composableBuilder(
+    column: $table.lastModified,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get profile => $composableBuilder(
+    column: $table.profile,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -1973,6 +2767,17 @@ class $$DownloadHistoryTableTableAnnotationComposer
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
+  GeneratedColumn<String> get eTag =>
+      $composableBuilder(column: $table.eTag, builder: (column) => column);
+
+  GeneratedColumn<String> get lastModified => $composableBuilder(
+    column: $table.lastModified,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get profile =>
+      $composableBuilder(column: $table.profile, builder: (column) => column);
+
   GeneratedColumn<String> get metadataJson => $composableBuilder(
     column: $table.metadataJson,
     builder: (column) => column,
@@ -1985,6 +2790,32 @@ class $$DownloadHistoryTableTableAnnotationComposer
     column: $table.completedAt,
     builder: (column) => column,
   );
+
+  Expression<T> downloadSegmentsTableRefs<T extends Object>(
+    Expression<T> Function($$DownloadSegmentsTableTableAnnotationComposer a) f,
+  ) {
+    final $$DownloadSegmentsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.taskId,
+          referencedTable: $db.downloadSegmentsTable,
+          getReferencedColumn: (t) => t.taskId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DownloadSegmentsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.downloadSegmentsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$DownloadHistoryTableTableTableManager
@@ -1998,16 +2829,9 @@ class $$DownloadHistoryTableTableTableManager
           $$DownloadHistoryTableTableAnnotationComposer,
           $$DownloadHistoryTableTableCreateCompanionBuilder,
           $$DownloadHistoryTableTableUpdateCompanionBuilder,
-          (
-            DownloadHistoryTableData,
-            BaseReferences<
-              _$AppDatabase,
-              $DownloadHistoryTableTable,
-              DownloadHistoryTableData
-            >,
-          ),
+          (DownloadHistoryTableData, $$DownloadHistoryTableTableReferences),
           DownloadHistoryTableData,
-          PrefetchHooks Function()
+          PrefetchHooks Function({bool downloadSegmentsTableRefs})
         > {
   $$DownloadHistoryTableTableTableManager(
     _$AppDatabase db,
@@ -2041,6 +2865,9 @@ class $$DownloadHistoryTableTableTableManager
                 Value<int?> fileSizeBytes = const Value.absent(),
                 Value<int?> durationSeconds = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<String?> eTag = const Value.absent(),
+                Value<String?> lastModified = const Value.absent(),
+                Value<String?> profile = const Value.absent(),
                 Value<String?> metadataJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
@@ -2056,6 +2883,9 @@ class $$DownloadHistoryTableTableTableManager
                 fileSizeBytes: fileSizeBytes,
                 durationSeconds: durationSeconds,
                 status: status,
+                eTag: eTag,
+                lastModified: lastModified,
+                profile: profile,
                 metadataJson: metadataJson,
                 createdAt: createdAt,
                 completedAt: completedAt,
@@ -2073,6 +2903,9 @@ class $$DownloadHistoryTableTableTableManager
                 Value<int?> fileSizeBytes = const Value.absent(),
                 Value<int?> durationSeconds = const Value.absent(),
                 Value<String> status = const Value.absent(),
+                Value<String?> eTag = const Value.absent(),
+                Value<String?> lastModified = const Value.absent(),
+                Value<String?> profile = const Value.absent(),
                 Value<String?> metadataJson = const Value.absent(),
                 required DateTime createdAt,
                 Value<DateTime?> completedAt = const Value.absent(),
@@ -2088,6 +2921,9 @@ class $$DownloadHistoryTableTableTableManager
                 fileSizeBytes: fileSizeBytes,
                 durationSeconds: durationSeconds,
                 status: status,
+                eTag: eTag,
+                lastModified: lastModified,
+                profile: profile,
                 metadataJson: metadataJson,
                 createdAt: createdAt,
                 completedAt: completedAt,
@@ -2099,15 +2935,42 @@ class $$DownloadHistoryTableTableTableManager
                     $DownloadHistoryTableTable,
                     DownloadHistoryTableData
                   >(table),
-                  BaseReferences<
-                    _$AppDatabase,
-                    $DownloadHistoryTableTable,
-                    DownloadHistoryTableData
-                  >(db, table, e),
+                  $$DownloadHistoryTableTableReferences(db, table, e),
                 ),
               )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({downloadSegmentsTableRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (downloadSegmentsTableRefs) db.downloadSegmentsTable,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (downloadSegmentsTableRefs)
+                    await $_getPrefetchedData<
+                      DownloadHistoryTableData,
+                      $DownloadHistoryTableTable,
+                      DownloadSegmentsTableData
+                    >(
+                      currentTable: table,
+                      referencedTable: $$DownloadHistoryTableTableReferences
+                          ._downloadSegmentsTableRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$DownloadHistoryTableTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).downloadSegmentsTableRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.taskId == item.taskId),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
         ),
       );
 }
@@ -2122,16 +2985,409 @@ typedef $$DownloadHistoryTableTableProcessedTableManager =
       $$DownloadHistoryTableTableAnnotationComposer,
       $$DownloadHistoryTableTableCreateCompanionBuilder,
       $$DownloadHistoryTableTableUpdateCompanionBuilder,
-      (
-        DownloadHistoryTableData,
+      (DownloadHistoryTableData, $$DownloadHistoryTableTableReferences),
+      DownloadHistoryTableData,
+      PrefetchHooks Function({bool downloadSegmentsTableRefs})
+    >;
+typedef $$DownloadSegmentsTableTableCreateCompanionBuilder =
+    DownloadSegmentsTableCompanion Function({
+      Value<int> id,
+      required String taskId,
+      required int segmentIndex,
+      required int startOffset,
+      required int endOffset,
+      Value<int> bytesDownloaded,
+      Value<String> status,
+      required DateTime lastUpdatedAt,
+    });
+typedef $$DownloadSegmentsTableTableUpdateCompanionBuilder =
+    DownloadSegmentsTableCompanion Function({
+      Value<int> id,
+      Value<String> taskId,
+      Value<int> segmentIndex,
+      Value<int> startOffset,
+      Value<int> endOffset,
+      Value<int> bytesDownloaded,
+      Value<String> status,
+      Value<DateTime> lastUpdatedAt,
+    });
+
+final class $$DownloadSegmentsTableTableReferences
+    extends
         BaseReferences<
           _$AppDatabase,
-          $DownloadHistoryTableTable,
-          DownloadHistoryTableData
-        >,
-      ),
-      DownloadHistoryTableData,
-      PrefetchHooks Function()
+          $DownloadSegmentsTableTable,
+          DownloadSegmentsTableData
+        > {
+  $$DownloadSegmentsTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $DownloadHistoryTableTable _taskIdTable(_$AppDatabase db) => db
+      .downloadHistoryTable
+      .createAlias('download_segments__task_id__download_history__task_id');
+
+  $$DownloadHistoryTableTableProcessedTableManager get taskId {
+    final $_column = $_itemColumn<String>('task_id')!;
+
+    final manager = $$DownloadHistoryTableTableTableManager(
+      $_db,
+      $_db.downloadHistoryTable,
+    ).filter((f) => f.taskId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_taskIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DownloadSegmentsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $DownloadSegmentsTableTable> {
+  $$DownloadSegmentsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get segmentIndex => $composableBuilder(
+    column: $table.segmentIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startOffset => $composableBuilder(
+    column: $table.startOffset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get endOffset => $composableBuilder(
+    column: $table.endOffset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bytesDownloaded => $composableBuilder(
+    column: $table.bytesDownloaded,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastUpdatedAt => $composableBuilder(
+    column: $table.lastUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$DownloadHistoryTableTableFilterComposer get taskId {
+    final $$DownloadHistoryTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.downloadHistoryTable,
+      getReferencedColumn: (t) => t.taskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DownloadHistoryTableTableFilterComposer(
+            $db: $db,
+            $table: $db.downloadHistoryTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DownloadSegmentsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $DownloadSegmentsTableTable> {
+  $$DownloadSegmentsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get segmentIndex => $composableBuilder(
+    column: $table.segmentIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startOffset => $composableBuilder(
+    column: $table.startOffset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get endOffset => $composableBuilder(
+    column: $table.endOffset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bytesDownloaded => $composableBuilder(
+    column: $table.bytesDownloaded,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastUpdatedAt => $composableBuilder(
+    column: $table.lastUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$DownloadHistoryTableTableOrderingComposer get taskId {
+    final $$DownloadHistoryTableTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.taskId,
+          referencedTable: $db.downloadHistoryTable,
+          getReferencedColumn: (t) => t.taskId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DownloadHistoryTableTableOrderingComposer(
+                $db: $db,
+                $table: $db.downloadHistoryTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$DownloadSegmentsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DownloadSegmentsTableTable> {
+  $$DownloadSegmentsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get segmentIndex => $composableBuilder(
+    column: $table.segmentIndex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get startOffset => $composableBuilder(
+    column: $table.startOffset,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get endOffset =>
+      $composableBuilder(column: $table.endOffset, builder: (column) => column);
+
+  GeneratedColumn<int> get bytesDownloaded => $composableBuilder(
+    column: $table.bytesDownloaded,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastUpdatedAt => $composableBuilder(
+    column: $table.lastUpdatedAt,
+    builder: (column) => column,
+  );
+
+  $$DownloadHistoryTableTableAnnotationComposer get taskId {
+    final $$DownloadHistoryTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.taskId,
+          referencedTable: $db.downloadHistoryTable,
+          getReferencedColumn: (t) => t.taskId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DownloadHistoryTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.downloadHistoryTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$DownloadSegmentsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DownloadSegmentsTableTable,
+          DownloadSegmentsTableData,
+          $$DownloadSegmentsTableTableFilterComposer,
+          $$DownloadSegmentsTableTableOrderingComposer,
+          $$DownloadSegmentsTableTableAnnotationComposer,
+          $$DownloadSegmentsTableTableCreateCompanionBuilder,
+          $$DownloadSegmentsTableTableUpdateCompanionBuilder,
+          (DownloadSegmentsTableData, $$DownloadSegmentsTableTableReferences),
+          DownloadSegmentsTableData,
+          PrefetchHooks Function({bool taskId})
+        > {
+  $$DownloadSegmentsTableTableTableManager(
+    _$AppDatabase db,
+    $DownloadSegmentsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DownloadSegmentsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$DownloadSegmentsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DownloadSegmentsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> taskId = const Value.absent(),
+                Value<int> segmentIndex = const Value.absent(),
+                Value<int> startOffset = const Value.absent(),
+                Value<int> endOffset = const Value.absent(),
+                Value<int> bytesDownloaded = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime> lastUpdatedAt = const Value.absent(),
+              }) => DownloadSegmentsTableCompanion(
+                id: id,
+                taskId: taskId,
+                segmentIndex: segmentIndex,
+                startOffset: startOffset,
+                endOffset: endOffset,
+                bytesDownloaded: bytesDownloaded,
+                status: status,
+                lastUpdatedAt: lastUpdatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String taskId,
+                required int segmentIndex,
+                required int startOffset,
+                required int endOffset,
+                Value<int> bytesDownloaded = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                required DateTime lastUpdatedAt,
+              }) => DownloadSegmentsTableCompanion.insert(
+                id: id,
+                taskId: taskId,
+                segmentIndex: segmentIndex,
+                startOffset: startOffset,
+                endOffset: endOffset,
+                bytesDownloaded: bytesDownloaded,
+                status: status,
+                lastUpdatedAt: lastUpdatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $DownloadSegmentsTableTable,
+                    DownloadSegmentsTableData
+                  >(table),
+                  $$DownloadSegmentsTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({taskId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (taskId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.taskId,
+                        referencedTable: $$DownloadSegmentsTableTableReferences
+                            ._taskIdTable(db),
+                        referencedColumn: $$DownloadSegmentsTableTableReferences
+                            ._taskIdTable(db)
+                            .taskId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DownloadSegmentsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DownloadSegmentsTableTable,
+      DownloadSegmentsTableData,
+      $$DownloadSegmentsTableTableFilterComposer,
+      $$DownloadSegmentsTableTableOrderingComposer,
+      $$DownloadSegmentsTableTableAnnotationComposer,
+      $$DownloadSegmentsTableTableCreateCompanionBuilder,
+      $$DownloadSegmentsTableTableUpdateCompanionBuilder,
+      (DownloadSegmentsTableData, $$DownloadSegmentsTableTableReferences),
+      DownloadSegmentsTableData,
+      PrefetchHooks Function({bool taskId})
     >;
 typedef $$SettingsTableTableCreateCompanionBuilder =
     SettingsTableCompanion Function({
@@ -2639,6 +3895,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$DownloadHistoryTableTableTableManager get downloadHistoryTable =>
       $$DownloadHistoryTableTableTableManager(_db, _db.downloadHistoryTable);
+  $$DownloadSegmentsTableTableTableManager get downloadSegmentsTable =>
+      $$DownloadSegmentsTableTableTableManager(_db, _db.downloadSegmentsTable);
   $$SettingsTableTableTableManager get settingsTable =>
       $$SettingsTableTableTableManager(_db, _db.settingsTable);
   $$ProcessingJobsTableTableTableManager get processingJobsTable =>

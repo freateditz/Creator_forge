@@ -15,7 +15,20 @@ class DownloadHistoryTable extends Table {
   IntColumn get fileSizeBytes => integer().nullable()();
   IntColumn get durationSeconds => integer().nullable()();
   TextColumn get status => text().withDefault(const Constant('completed'))();
+  TextColumn get eTag => text().nullable()();
+  TextColumn get lastModified => text().nullable()();
+  TextColumn get profile => text().nullable()();
   TextColumn get metadataJson => text().nullable()();
+
+  // ── Session metadata for persistent resume / crash recovery ──────────────
+  TextColumn get refreshedUrl => text().nullable()();
+  TextColumn get tempDirectory => text().nullable()();
+  TextColumn get mimeType => text().nullable()();
+  IntColumn get segmentCount => integer().withDefault(const Constant(0))();
+  IntColumn get actualBytes => integer().nullable()();
+  TextColumn get lastError => text().nullable()();
+  DateTimeColumn get lastUpdatedAt => dateTime().nullable()();
+
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get completedAt => dateTime().nullable()();
 }

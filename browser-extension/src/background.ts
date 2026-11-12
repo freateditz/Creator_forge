@@ -28,6 +28,7 @@ import type {
   DownloadType,
   IncomingMessage,
   MediaCandidate,
+  MediaFormat,
   PopupToBgMsg,
 } from "./types";
 
@@ -338,7 +339,7 @@ function buildAnalysisResult(response: IncomingMessage) {
     uploaderName: (response as { uploaderName?: string }).uploaderName,
     supported: Boolean((response as { supported?: boolean }).supported),
     isDirectDownload: Boolean((response as { isDirectDownload?: boolean }).isDirectDownload),
-    formats: (response as { formats?: unknown[] }).formats ?? [],
+    formats: (response as { formats?: MediaFormat[] }).formats ?? [],
     error: (response as { error?: string }).error,
   };
 }

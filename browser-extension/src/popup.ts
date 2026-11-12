@@ -11,7 +11,6 @@ import type {
   ConnectionState,
   DownloadType,
   MediaCandidate,
-  MediaFormat,
   PopupToBgMsg,
 } from "./types";
 

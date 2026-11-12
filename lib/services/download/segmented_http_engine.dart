@@ -12,6 +12,8 @@ import '../../core/utils/validators.dart';
 import '../../models/download_task.dart';
 import '../../models/media_info.dart';
 import '../../repositories/download_history_repository.dart';
+import 'adaptive_concurrency.dart';
+import 'connection_scheduler.dart';
 import 'download_engine.dart';
 
 /// Minimum file size (bytes) required to attempt range-segmented download.
@@ -25,6 +27,7 @@ class SegmentedHttpEngine implements DownloadEngine {
 
   int maxConcurrent;
   int segmentCount;
+  DownloadProfile downloadProfile;
   String defaultOutputDir;
 
   final _controller = StreamController<List<DownloadTask>>.broadcast();
@@ -40,10 +43,17 @@ class SegmentedHttpEngine implements DownloadEngine {
     required DownloadHistoryRepository historyRepo,
     this.maxConcurrent = 3,
     this.segmentCount = 8,
+    this.downloadProfile = DownloadProfile.balanced,
     String? defaultOutputDir,
   }) : _historyRepo = historyRepo,
-       defaultOutputDir =
-           defaultOutputDir ?? AppConfig.instance.defaultDownloadsDir;
+       defaultOutputDir = defaultOutputDir ??
+           (() {
+             try {
+               return AppConfig.instance.defaultDownloadsDir;
+             } catch (_) {
+               return Directory.systemTemp.path;
+             }
+           })();
 
   // ── Public interface ────────────────────────────────────────────────────────
 
@@ -108,6 +118,7 @@ class SegmentedHttpEngine implements DownloadEngine {
     final task = _tasks[taskId];
     if (task == null || task.status != DownloadStatus.downloading) return;
     _abortClients(taskId);
+    GlobalConnectionScheduler.instance.releaseTaskSlots(taskId);
     _updateTask(taskId, status: DownloadStatus.paused);
     _activeCount--;
     _persistTask(_tasks[taskId]!).ignore();
@@ -128,6 +139,7 @@ class SegmentedHttpEngine implements DownloadEngine {
     final task = _tasks[taskId];
     if (task == null) return;
     _abortClients(taskId);
+    GlobalConnectionScheduler.instance.releaseTaskSlots(taskId);
     if (task.status == DownloadStatus.queued) _queue.remove(taskId);
     _updateTask(taskId, status: DownloadStatus.cancelled);
     final updated = _tasks[taskId];
@@ -237,13 +249,22 @@ class SegmentedHttpEngine implements DownloadEngine {
     final task = _tasks[taskId]!;
     final uri = Uri.parse(task.url);
     final outputPath = p.join(task.outputDirectory, task.outputFilename!);
-    final tempDir = p.join(AppConfig.instance.tempDir, taskId);
+
+    String baseTempDir;
+    try {
+      baseTempDir = AppConfig.instance.tempDir;
+    } catch (_) {
+      baseTempDir = Directory.systemTemp.path;
+    }
+    final tempDir = p.join(baseTempDir, taskId);
 
     _updateTask(taskId, status: DownloadStatus.resolving);
 
-    // ── HEAD request ────────────────────────────────────────────────────────
+    // ── HEAD request for validation ──────────────────────────────────────────
     int? contentLength;
     bool acceptsRanges = false;
+    String? eTag;
+    String? lastModified;
 
     try {
       final headClient = HttpClient()
@@ -256,11 +277,10 @@ class SegmentedHttpEngine implements DownloadEngine {
       final headResp = await headReq.close();
       await headResp.drain<void>();
 
-      contentLength = headResp.contentLength > 0
-          ? headResp.contentLength
-          : null;
-      acceptsRanges =
-          headResp.headers.value('accept-ranges')?.toLowerCase() == 'bytes';
+      contentLength = headResp.contentLength > 0 ? headResp.contentLength : null;
+      acceptsRanges = headResp.headers.value('accept-ranges')?.toLowerCase() == 'bytes';
+      eTag = headResp.headers.value('etag');
+      lastModified = headResp.headers.value('last-modified');
 
       _removeClient(taskId, headClient);
     } catch (e) {
@@ -274,16 +294,28 @@ class SegmentedHttpEngine implements DownloadEngine {
       return;
     }
 
+    // Resource validation: if ETag or Last-Modified changed, or size changed, we must restart.
+    if (task.totalBytes != null && contentLength != null && task.totalBytes != contentLength) {
+      _log.info('Resource size changed ($taskId). Restarting download.');
+      await _historyRepo.deleteSegmentsByTaskId(taskId);
+      _deleteTempFiles(taskId);
+    } else if (task.eTag != null && eTag != null && task.eTag != eTag) {
+      _log.info('Resource ETag changed ($taskId). Restarting download.');
+      await _historyRepo.deleteSegmentsByTaskId(taskId);
+      _deleteTempFiles(taskId);
+    }
+
     _updateTask(
       taskId,
       status: DownloadStatus.downloading,
       totalBytes: contentLength,
+      eTag: eTag,
+      lastModified: lastModified,
     );
 
     // ── Decide: segmented or single-stream ──────────────────────────────────
     final knownLength = contentLength;
-    final useSegments =
-        acceptsRanges &&
+    final useSegments = acceptsRanges &&
         knownLength != null &&
         knownLength > _kMinSegmentSize &&
         segmentCount > 1;
@@ -323,60 +355,83 @@ class SegmentedHttpEngine implements DownloadEngine {
       final end = (start + segSize - 1).clamp(0, totalBytes - 1);
       final segPath = p.join(tempDir, 'seg_$i.tmp');
 
-      final client = HttpClient()
-        ..connectionTimeout = const Duration(seconds: 30);
-      _addClient(taskId, client);
-
+      await GlobalConnectionScheduler.instance.acquireSlot(taskId, i, uri.host);
       try {
-        final req = await client.getUrl(uri);
-        req.followRedirects = true;
-        req.maxRedirects = 5;
-        req.headers.set('Range', 'bytes=$start-$end');
+        final client = HttpClient()
+          ..connectionTimeout = const Duration(seconds: 30);
+        _addClient(taskId, client);
 
-        final resp = await req.close();
-        if (resp.statusCode != 206 && resp.statusCode != 200) {
-          throw HttpException(
-            'Unexpected status ${resp.statusCode} for segment $i',
-            uri: uri,
-          );
-        }
-
-        final sink = File(segPath).openWrite();
         try {
-          await for (final chunk in resp) {
-            if (!_isTaskActive(taskId)) {
-              await sink.flush();
-              await sink.close();
-              return;
-            }
-            sink.add(chunk);
-            segProgress[i] += chunk.length;
+          final req = await client.getUrl(uri);
+          req.followRedirects = true;
+          req.maxRedirects = 5;
+          req.headers.set('Range', 'bytes=$start-$end');
 
-            // Throttle progress updates to ~10 Hz.
-            final now = DateTime.now();
-            if (now.difference(lastEmit).inMilliseconds >= 100) {
-              lastEmit = now;
-              final done = segProgress.fold(0, (a, b) => a + b);
-              _updateTask(
-                taskId,
-                downloadedBytes: done,
-                progress: done / totalBytes,
-              );
-            }
+          final resp = await req.close();
+          if (resp.statusCode == 200) {
+            throw HttpException(
+              'Server returned HTTP 200 instead of 206 for Range request; falling back to single stream.',
+              uri: uri,
+            );
           }
-          await sink.flush();
+          if (resp.statusCode != 206) {
+            throw HttpException(
+              'Unexpected status ${resp.statusCode} for segment $i',
+              uri: uri,
+            );
+          }
+
+          final sink = File(segPath).openWrite();
+          try {
+            await for (final chunk in resp) {
+              if (!_isTaskActive(taskId)) {
+                await sink.flush();
+                await sink.close();
+                return;
+              }
+              sink.add(chunk);
+              segProgress[i] += chunk.length;
+
+              // Throttle progress updates to ~10 Hz.
+              final now = DateTime.now();
+              if (now.difference(lastEmit).inMilliseconds >= 100) {
+                lastEmit = now;
+                final done = segProgress.fold(0, (a, b) => a + b);
+                _updateTask(
+                  taskId,
+                  downloadedBytes: done,
+                  progress: done / totalBytes,
+                );
+              }
+            }
+            await sink.flush();
+          } finally {
+            await sink.close();
+          }
         } finally {
-          await sink.close();
+          _removeClient(taskId, client);
         }
       } finally {
-        _removeClient(taskId, client);
+        GlobalConnectionScheduler.instance.releaseSlot(taskId, i);
       }
     }
 
-    await Future.wait(
-      List.generate(segmentCount, downloadSegment),
-      eagerError: true,
-    );
+    try {
+      await Future.wait(
+        List.generate(segmentCount, downloadSegment),
+        eagerError: true,
+      );
+    } catch (e) {
+      if (e.toString().contains('HTTP 200')) {
+        _log.info(
+          'Server does not support partial ranges correctly; falling back to single stream for $taskId',
+        );
+        _abortClients(taskId);
+        _deleteTempFiles(taskId);
+        return _downloadSingleStream(taskId, uri, outputPath);
+      }
+      rethrow;
+    }
 
     if (!_isTaskActive(taskId)) {
       _deleteTempFiles(taskId);
@@ -385,9 +440,10 @@ class SegmentedHttpEngine implements DownloadEngine {
       return;
     }
 
-    // ── Merge segments ──────────────────────────────────────────────────────
+    // ── Merge segments atomically ───────────────────────────────────────────
     _updateTask(taskId, status: DownloadStatus.merging, progress: 1.0);
-    final out = File(outputPath).openWrite();
+    final partPath = '$outputPath.part';
+    final out = File(partPath).openWrite();
     try {
       for (int i = 0; i < segmentCount; i++) {
         final seg = File(p.join(tempDir, 'seg_$i.tmp'));
@@ -398,6 +454,17 @@ class SegmentedHttpEngine implements DownloadEngine {
       await out.flush();
     } finally {
       await out.close();
+    }
+
+    // Atomic rename to final output path
+    final partFile = File(partPath);
+    if (partFile.existsSync()) {
+      if (File(outputPath).existsSync()) {
+        try {
+          File(outputPath).deleteSync();
+        } catch (_) {}
+      }
+      await partFile.rename(outputPath);
     }
 
     _deleteTempFiles(taskId);
@@ -421,6 +488,8 @@ class SegmentedHttpEngine implements DownloadEngine {
       ..connectionTimeout = const Duration(seconds: 30);
     _addClient(taskId, client);
 
+    final partPath = '$outputPath.part';
+
     try {
       final req = await client.getUrl(uri);
       req.followRedirects = true;
@@ -436,12 +505,15 @@ class SegmentedHttpEngine implements DownloadEngine {
 
       int received = 0;
       var lastEmit = DateTime.now();
-      final sink = File(outputPath).openWrite();
+      final sink = File(partPath).openWrite();
       try {
         await for (final chunk in resp) {
           if (!_isTaskActive(taskId)) {
             await sink.flush();
             await sink.close();
+            try {
+              File(partPath).deleteSync();
+            } catch (_) {}
             return;
           }
           sink.add(chunk);
@@ -466,6 +538,17 @@ class SegmentedHttpEngine implements DownloadEngine {
     }
 
     if (!_isTaskActive(taskId)) return;
+
+    // Atomic rename to final output path
+    final partFile = File(partPath);
+    if (partFile.existsSync()) {
+      if (File(outputPath).existsSync()) {
+        try {
+          File(outputPath).deleteSync();
+        } catch (_) {}
+      }
+      await partFile.rename(outputPath);
+    }
 
     _finishTask(
       taskId,
@@ -497,6 +580,7 @@ class SegmentedHttpEngine implements DownloadEngine {
       _activeCount--;
       return;
     }
+    GlobalConnectionScheduler.instance.releaseTaskSlots(taskId);
     _updateTask(
       taskId,
       status: status,
@@ -524,6 +608,8 @@ class SegmentedHttpEngine implements DownloadEngine {
     String? errorMessage,
     DateTime? completedAt,
     bool clearError = false,
+    String? eTag,
+    String? lastModified,
   }) {
     final task = _tasks[taskId];
     if (task == null) return;
@@ -537,6 +623,8 @@ class SegmentedHttpEngine implements DownloadEngine {
       outputPath: outputPath,
       errorMessage: clearError ? null : (errorMessage ?? task.errorMessage),
       completedAt: completedAt,
+      eTag: eTag,
+      lastModified: lastModified,
     );
     _emit();
   }
@@ -573,10 +661,18 @@ class SegmentedHttpEngine implements DownloadEngine {
   }
 
   void _deleteTempFiles(String taskId) {
-    final dir = Directory(p.join(AppConfig.instance.tempDir, taskId));
-    if (dir.existsSync()) {
-      dir.delete(recursive: true).ignore();
-    }
+    try {
+      String baseTempDir;
+      try {
+        baseTempDir = AppConfig.instance.tempDir;
+      } catch (_) {
+        baseTempDir = Directory.systemTemp.path;
+      }
+      final dir = Directory(p.join(baseTempDir, taskId));
+      if (dir.existsSync()) {
+        dir.delete(recursive: true).ignore();
+      }
+    } catch (_) {}
   }
 
   static String _safeFilename(String title, String urlPath) {

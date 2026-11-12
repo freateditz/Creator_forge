@@ -34,27 +34,68 @@ class DownloadHistoryRepository {
 
   Future<void> upsertTask(DownloadTask task) async {
     try {
-      await _db
-          .into(_db.downloadHistoryTable)
-          .insertOnConflictUpdate(
-            DownloadHistoryTableCompanion(
-              taskId: Value(task.id),
-              url: Value(task.url),
-              title: Value(task.title ?? 'Untitled'),
-              thumbnailUrl: Value(task.thumbnailUrl),
-              channelName: Value(task.channelName),
-              outputPath: Value(task.outputPath ?? task.outputDirectory),
-              format: Value(task.selectedFormat ?? ''),
-              fileSizeBytes: Value(task.totalBytes),
-              durationSeconds: Value(task.durationSeconds),
-              status: Value(_statusToString(task.status)),
-              createdAt: Value(task.createdAt),
-              completedAt: Value(task.completedAt),
-            ),
-          );
+      await _db.into(_db.downloadHistoryTable).insertOnConflictUpdate(
+        DownloadHistoryTableCompanion(
+          taskId: Value(task.id),
+          url: Value(task.url),
+          title: Value(task.title ?? 'Untitled'),
+          thumbnailUrl: Value(task.thumbnailUrl),
+          channelName: Value(task.channelName),
+          outputPath: Value(task.outputPath ?? task.outputDirectory),
+          format: Value(task.selectedFormat ?? ''),
+          fileSizeBytes: Value(task.totalBytes),
+          durationSeconds: Value(task.durationSeconds),
+          status: Value(_statusToString(task.status)),
+          eTag: Value(task.eTag),
+          lastModified: Value(task.lastModified),
+          profile: Value(task.profile),
+          createdAt: Value(task.createdAt),
+          completedAt: Value(task.completedAt),
+        ),
+      );
     } catch (e) {
       _log.warning('Failed to upsert task ${task.id}.', e);
     }
+  }
+
+  // ── Segments ──────────────────────────────────────────────────────────────
+
+  Future<List<DownloadSegmentsTableData>> getSegments(String taskId) async {
+    return (_db.select(_db.downloadSegmentsTable)
+          ..where((t) => t.taskId.equals(taskId))
+          ..orderBy([(t) => OrderingTerm.asc(t.segmentIndex)]))
+        .get();
+  }
+
+  Future<void> upsertSegment({
+    required String taskId,
+    required int index,
+    required int start,
+    required int end,
+    required int downloaded,
+    required String status,
+  }) async {
+    try {
+      await _db.into(_db.downloadSegmentsTable).insertOnConflictUpdate(
+            DownloadSegmentsTableCompanion(
+              taskId: Value(taskId),
+              segmentIndex: Value(index),
+              startOffset: Value(start),
+              endOffset: Value(end),
+              bytesDownloaded: Value(downloaded),
+              status: Value(status),
+              lastUpdatedAt: Value(DateTime.now()),
+            ),
+          );
+    } catch (e) {
+      _log.warning('Failed to upsert segment $index for task $taskId.', e);
+    }
+  }
+
+  Future<void> deleteSegmentsByTaskId(String taskId) async {
+    await (_db.delete(_db.downloadSegmentsTable)
+          ..where((t) => t.taskId.equals(taskId)))
+        .go();
   }
 
   Future<void> updateStatus(

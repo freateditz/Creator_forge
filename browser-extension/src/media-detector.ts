@@ -20,8 +20,6 @@ import type {
   MediaElementType,
 } from "./types";
 
-let _candidateCounter = 0;
-
 function _makeId(url: string): string {
   // Stable ID derived from normalized URL — used for deduplication.
   let hash = 0;

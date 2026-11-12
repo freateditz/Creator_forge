@@ -7,6 +7,7 @@ import 'core/config/app_config.dart';
 import 'core/constants/app_constants.dart';
 import 'core/design/design_tokens.dart';
 import 'core/logging/app_logger.dart';
+import 'services/desktop/desktop_lifecycle_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +54,7 @@ Future<void> main() async {
         await windowManager.setBackgroundColor(DesignTokens.bgDeep);
         await windowManager.show();
         await windowManager.focus();
+        await DesktopLifecycleService.instance.initialize();
       } catch (e, stack) {
         // ignore: avoid_print
         print('[ERROR] Failed to show/focus window: $e');
