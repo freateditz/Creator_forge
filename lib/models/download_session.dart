@@ -7,12 +7,7 @@ import 'download_task.dart';
 /// The ordering matters: a segment must pass through PENDING → DOWNLOADING →
 /// COMPLETED, and a crash between file-writing and database persistence must
 /// never leave a falsely-COMPLETED segment behind.
-enum SegmentState {
-  pending,
-  downloading,
-  completed,
-  failed,
-}
+enum SegmentState { pending, downloading, completed, failed }
 
 /// A single byte-range segment of a resumable download.
 ///
@@ -89,18 +84,18 @@ class DownloadSegment extends Equatable {
 
   @override
   List<Object?> get props => [
-        index,
-        startOffset,
-        endOffset,
-        expectedBytes,
-        actualBytes,
-        state,
-        mimeType,
-        retryCount,
-        lastError,
-        httpStatus,
-        lastUpdatedAt,
-      ];
+    index,
+    startOffset,
+    endOffset,
+    expectedBytes,
+    actualBytes,
+    state,
+    mimeType,
+    retryCount,
+    lastError,
+    httpStatus,
+    lastUpdatedAt,
+  ];
 }
 
 /// Full persisted metadata for one download session.
@@ -197,21 +192,21 @@ class DownloadSession extends Equatable {
 
   @override
   List<Object?> get props => [
-        taskId,
-        url,
-        refreshedUrl,
-        destinationPath,
-        tempDirectory,
-        expectedSize,
-        eTag,
-        lastModified,
-        mimeType,
-        profile,
-        segmentCount,
-        segments,
-        lastStatus,
-        lastUpdatedAt,
-        actualBytes,
-        lastError,
-      ];
+    taskId,
+    url,
+    refreshedUrl,
+    destinationPath,
+    tempDirectory,
+    expectedSize,
+    eTag,
+    lastModified,
+    mimeType,
+    profile,
+    segmentCount,
+    segments,
+    lastStatus,
+    lastUpdatedAt,
+    actualBytes,
+    lastError,
+  ];
 }

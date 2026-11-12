@@ -46,7 +46,8 @@ class SegmentedHttpEngine implements DownloadEngine {
     this.downloadProfile = DownloadProfile.balanced,
     String? defaultOutputDir,
   }) : _historyRepo = historyRepo,
-       defaultOutputDir = defaultOutputDir ??
+       defaultOutputDir =
+           defaultOutputDir ??
            (() {
              try {
                return AppConfig.instance.defaultDownloadsDir;
@@ -277,8 +278,11 @@ class SegmentedHttpEngine implements DownloadEngine {
       final headResp = await headReq.close();
       await headResp.drain<void>();
 
-      contentLength = headResp.contentLength > 0 ? headResp.contentLength : null;
-      acceptsRanges = headResp.headers.value('accept-ranges')?.toLowerCase() == 'bytes';
+      contentLength = headResp.contentLength > 0
+          ? headResp.contentLength
+          : null;
+      acceptsRanges =
+          headResp.headers.value('accept-ranges')?.toLowerCase() == 'bytes';
       eTag = headResp.headers.value('etag');
       lastModified = headResp.headers.value('last-modified');
 
@@ -295,7 +299,9 @@ class SegmentedHttpEngine implements DownloadEngine {
     }
 
     // Resource validation: if ETag or Last-Modified changed, or size changed, we must restart.
-    if (task.totalBytes != null && contentLength != null && task.totalBytes != contentLength) {
+    if (task.totalBytes != null &&
+        contentLength != null &&
+        task.totalBytes != contentLength) {
       _log.info('Resource size changed ($taskId). Restarting download.');
       await _historyRepo.deleteSegmentsByTaskId(taskId);
       _deleteTempFiles(taskId);
@@ -315,7 +321,8 @@ class SegmentedHttpEngine implements DownloadEngine {
 
     // ── Decide: segmented or single-stream ──────────────────────────────────
     final knownLength = contentLength;
-    final useSegments = acceptsRanges &&
+    final useSegments =
+        acceptsRanges &&
         knownLength != null &&
         knownLength > _kMinSegmentSize &&
         segmentCount > 1;

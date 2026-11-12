@@ -17,7 +17,8 @@ class ConnectionSlot {
 }
 
 class GlobalConnectionScheduler {
-  static final GlobalConnectionScheduler instance = GlobalConnectionScheduler._();
+  static final GlobalConnectionScheduler instance =
+      GlobalConnectionScheduler._();
   GlobalConnectionScheduler._();
 
   final _log = AppLogger.get('GlobalConnectionScheduler');
@@ -29,22 +30,22 @@ class GlobalConnectionScheduler {
   final _activeSlots = <ConnectionSlot>[];
   final _waitingSegments = Queue<(_SegmentRequest, Completer<void>)>();
 
-  void configure({
-    int? maxGlobal,
-    int? maxPerHost,
-    int? maxPerDownload,
-  }) {
+  void configure({int? maxGlobal, int? maxPerHost, int? maxPerDownload}) {
     if (maxGlobal != null) _maxGlobalConnections = maxGlobal;
     if (maxPerHost != null) _maxPerHostConnections = maxPerHost;
     if (maxPerDownload != null) _maxPerDownloadConnections = maxPerDownload;
-    _log.info('Scheduler configured: Global=$_maxGlobalConnections, PerHost=$_maxPerHostConnections, PerDownload=$_maxPerDownloadConnections');
+    _log.info(
+      'Scheduler configured: Global=$_maxGlobalConnections, PerHost=$_maxPerHostConnections, PerDownload=$_maxPerDownloadConnections',
+    );
   }
 
   Future<void> acquireSlot(String taskId, int segmentIndex, String host) async {
     final request = _SegmentRequest(taskId, segmentIndex, host);
-    
+
     if (_canAcquire(request)) {
-      _activeSlots.add(ConnectionSlot(taskId: taskId, segmentIndex: segmentIndex, host: host));
+      _activeSlots.add(
+        ConnectionSlot(taskId: taskId, segmentIndex: segmentIndex, host: host),
+      );
       return;
     }
 
@@ -54,7 +55,9 @@ class GlobalConnectionScheduler {
   }
 
   void releaseSlot(String taskId, int segmentIndex) {
-    _activeSlots.removeWhere((s) => s.taskId == taskId && s.segmentIndex == segmentIndex);
+    _activeSlots.removeWhere(
+      (s) => s.taskId == taskId && s.segmentIndex == segmentIndex,
+    );
     _processWaiting();
   }
 
@@ -72,14 +75,16 @@ class GlobalConnectionScheduler {
     if (_activeSlots.length >= _maxGlobalConnections) return false;
 
     // Check per-download limit
-    final downloadCount = _activeSlots.where((s) => s.taskId == req.taskId).length;
+    final downloadCount = _activeSlots
+        .where((s) => s.taskId == req.taskId)
+        .length;
     if (downloadCount >= _maxPerDownloadConnections) return false;
 
     // Check per-host limit
     final hostCount = _activeSlots.where((s) => s.host == req.host).length;
     if (hostCount >= _maxPerHostConnections) return false;
 
-    return true; 
+    return true;
   }
 
   void _processWaiting() {
@@ -87,7 +92,13 @@ class GlobalConnectionScheduler {
       final (req, completer) = _waitingSegments.first;
       if (_canAcquire(req)) {
         _waitingSegments.removeFirst();
-        _activeSlots.add(ConnectionSlot(taskId: req.taskId, segmentIndex: req.segmentIndex, host: req.host));
+        _activeSlots.add(
+          ConnectionSlot(
+            taskId: req.taskId,
+            segmentIndex: req.segmentIndex,
+            host: req.host,
+          ),
+        );
         completer.complete();
       } else {
         break;

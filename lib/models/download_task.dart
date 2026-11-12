@@ -122,13 +122,13 @@ class DownloadTask extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        url,
-        title,
-        status,
-        progress,
-        eTag,
-        lastModified,
-        profile,
-      ];
+    id,
+    url,
+    title,
+    status,
+    progress,
+    eTag,
+    lastModified,
+    profile,
+  ];
 }

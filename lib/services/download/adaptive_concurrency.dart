@@ -1,11 +1,8 @@
 import 'dart:math' as math;
+
 import '../../core/logging/app_logger.dart';
 
-enum DownloadProfile {
-  balanced,
-  fast,
-  maximum,
-}
+enum DownloadProfile { balanced, fast, maximum }
 
 class AdaptiveConcurrencyController {
   final String taskId;
@@ -15,7 +12,7 @@ class AdaptiveConcurrencyController {
   final int _currentSegments;
   int _consecutiveFailures = 0;
   DateTime? _lastFailureAt;
-  
+
   // smoothed throughput metrics
   double _emaThroughput = 0.0;
   final double _alpha = 0.2; // smoothing factor
@@ -36,24 +33,27 @@ class AdaptiveConcurrencyController {
   void reportProgress(int bytes, Duration delta) {
     if (delta.inMilliseconds == 0) return;
     final instantThroughput = bytes / (delta.inMilliseconds / 1000.0);
-    
+
     if (_emaThroughput == 0.0) {
       _emaThroughput = instantThroughput;
     } else {
-      _emaThroughput = (_alpha * instantThroughput) + ((1 - _alpha) * _emaThroughput);
+      _emaThroughput =
+          (_alpha * instantThroughput) + ((1 - _alpha) * _emaThroughput);
     }
 
     // Heuristic: if throughput is stable and high, and we aren't at max, potentially increase.
-    // Simplifying: we won't dynamically change segment COUNT during a running download 
+    // Simplifying: we won't dynamically change segment COUNT during a running download
     // because that would require re-splitting the remaining ranges which is complex.
-    // Instead, "Adaptive Concurrency" in 1.2 will focus on connection slot allocation 
+    // Instead, "Adaptive Concurrency" in 1.2 will focus on connection slot allocation
     // and backoff, rather than re-sharding the file.
   }
 
   void reportFailure() {
     _consecutiveFailures++;
     _lastFailureAt = DateTime.now();
-    _log.warning('Task $taskId reported failure. Consecutive: $_consecutiveFailures');
+    _log.warning(
+      'Task $taskId reported failure. Consecutive: $_consecutiveFailures',
+    );
   }
 
   void reportSuccess() {

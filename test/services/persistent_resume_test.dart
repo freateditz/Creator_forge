@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
@@ -37,7 +38,8 @@ void main() {
       when(() => mockRepo.upsertTask(any())).thenAnswer((_) async {});
       when(() => mockRepo.getInterrupted()).thenAnswer((_) async => []);
       when(() => mockRepo.getSegments(any())).thenAnswer((_) async => []);
-      when(() => mockRepo.deleteSegmentsByTaskId(any())).thenAnswer((_) async {});
+      when(() => mockRepo.deleteSegmentsByTaskId(any()))
+          .thenAnswer((_) async {});
 
       tempOutputDir = await Directory.systemTemp.createTemp(
         'creator_forge_resume_test_',
@@ -138,10 +140,18 @@ void main() {
 
       expect(GlobalConnectionScheduler.instance.activeConnectionCount, 0);
 
-      await GlobalConnectionScheduler.instance.acquireSlot('task1', 0, 'example.com');
+      await GlobalConnectionScheduler.instance.acquireSlot(
+        'task1',
+        0,
+        'example.com',
+      );
       expect(GlobalConnectionScheduler.instance.activeConnectionCount, 1);
 
-      await GlobalConnectionScheduler.instance.acquireSlot('task1', 1, 'example.com');
+      await GlobalConnectionScheduler.instance.acquireSlot(
+        'task1',
+        1,
+        'example.com',
+      );
       expect(GlobalConnectionScheduler.instance.activeConnectionCount, 2);
 
       // Release slots for task1

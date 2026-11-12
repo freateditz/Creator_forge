@@ -33,31 +33,76 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (m, from, to) async {
       if (from < 2) {
         // Add new columns to download_history
-        await m.addColumn(downloadHistoryTable, downloadHistoryTable.eTag as dynamic);
-        await m.addColumn(downloadHistoryTable, downloadHistoryTable.lastModified as dynamic);
-        await m.addColumn(downloadHistoryTable, downloadHistoryTable.profile as dynamic);
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.eTag as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.lastModified as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.profile as dynamic,
+        );
         // Create download_segments table
         await m.createTable(downloadSegmentsTable);
       }
       if (from < 3) {
         // Enrich download_segments with the metadata needed for crash recovery
         // (expectedBytes, mimeType, retryCount, lastError, httpStatus).
-        await m.addColumn(downloadSegmentsTable, downloadSegmentsTable.expectedBytes as dynamic);
-        await m.addColumn(downloadSegmentsTable, downloadSegmentsTable.mimeType as dynamic);
-        await m.addColumn(downloadSegmentsTable, downloadSegmentsTable.retryCount as dynamic);
-        await m.addColumn(downloadSegmentsTable, downloadSegmentsTable.lastError as dynamic);
-        await m.addColumn(downloadSegmentsTable, downloadSegmentsTable.httpStatus as dynamic);
+        await m.addColumn(
+          downloadSegmentsTable,
+          downloadSegmentsTable.expectedBytes as dynamic,
+        );
+        await m.addColumn(
+          downloadSegmentsTable,
+          downloadSegmentsTable.mimeType as dynamic,
+        );
+        await m.addColumn(
+          downloadSegmentsTable,
+          downloadSegmentsTable.retryCount as dynamic,
+        );
+        await m.addColumn(
+          downloadSegmentsTable,
+          downloadSegmentsTable.lastError as dynamic,
+        );
+        await m.addColumn(
+          downloadSegmentsTable,
+          downloadSegmentsTable.httpStatus as dynamic,
+        );
       }
       if (from < 4) {
         // Enrich download_history with session metadata needed for persistent
         // resume / crash recovery.
-        await m.addColumn(downloadHistoryTable, downloadHistoryTable.refreshedUrl as dynamic);
-        await m.addColumn(downloadHistoryTable, downloadHistoryTable.tempDirectory as dynamic);
-        await m.addColumn(downloadHistoryTable, downloadHistoryTable.mimeType as dynamic);
-        await m.addColumn(downloadHistoryTable, downloadHistoryTable.segmentCount as dynamic);
-        await m.addColumn(downloadHistoryTable, downloadHistoryTable.actualBytes as dynamic);
-        await m.addColumn(downloadHistoryTable, downloadHistoryTable.lastError as dynamic);
-        await m.addColumn(downloadHistoryTable, downloadHistoryTable.lastUpdatedAt as dynamic);
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.refreshedUrl as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.tempDirectory as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.mimeType as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.segmentCount as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.actualBytes as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.lastError as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.lastUpdatedAt as dynamic,
+        );
       }
     },
     beforeOpen: (details) async {
