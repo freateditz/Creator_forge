@@ -630,134 +630,142 @@ void main() {
       await tempAppDir.delete(recursive: true);
     });
 
-    test('G. ETag validation prevents segment reuse across resource changes', () async {
-      final testData = List.generate(64 * 1024, (i) => i % 256);
-      final taskId =
-          'test-etag-validation-${DateTime.now().millisecondsSinceEpoch}';
-      final dbPath = p.join(tempDir.path, 'test_g.db');
+    test(
+      'G. ETag validation prevents segment reuse across resource changes',
+      () async {
+        final testData = List.generate(64 * 1024, (i) => i % 256);
+        final taskId =
+            'test-etag-validation-${DateTime.now().millisecondsSinceEpoch}';
+        final dbPath = p.join(tempDir.path, 'test_g.db');
 
-      final tempAppDir = await Directory.systemTemp.createTemp(
-        'creator_forge_app_g_',
-      );
-      final tempSegmentsDir = Directory(p.join(tempAppDir.path, 'segments'));
-      await tempSegmentsDir.create();
-
-      // Phase 1: Create database with OLD ETag and completed segment
-      // Task must be in failed/cancelled state for retry() to work
-      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-      final serverUrl = 'http://${server.address.host}:${server.port}/test.bin';
-
-      server.listen((request) async {
-        request.response.statusCode = HttpStatus.ok;
-        request.response.contentLength = testData.length;
-        request.response.headers.set('etag', 'new-etag-v2');
-        request.response.headers.set('accept-ranges', 'bytes');
-        request.response.add(testData);
-        await request.response.close();
-      });
-
-      {
-        final db = createDatabase(dbPath);
-        final repo = DownloadHistoryRepository(db);
-
-        // Status must be non-terminal so initialize()/getInterrupted() loads the
-        // task into the engine. Set tempDirectory to match segment location.
-        final tempDir = tempSegmentsDir.path;
-        final task = DownloadTask(
-          id: taskId,
-          url: serverUrl,
-          title: 'ETag Validation Test',
-          outputDirectory: tempOutputDir.path,
-          outputFilename: 'test.bin',
-          status: DownloadStatus.downloading,
-          createdAt: DateTime.now(),
-          totalBytes: testData.length,
-          eTag: 'old-etag-v1',
-          tempDirectory: tempDir,
+        final tempAppDir = await Directory.systemTemp.createTemp(
+          'creator_forge_app_g_',
         );
+        final tempSegmentsDir = Directory(p.join(tempAppDir.path, 'segments'));
+        await tempSegmentsDir.create();
 
-        await repo.upsertTask(task);
+        // Phase 1: Create database with OLD ETag and completed segment
+        // Task must be in failed/cancelled state for retry() to work
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        final serverUrl =
+            'http://${server.address.host}:${server.port}/test.bin';
 
-        final segmentPath = p.join(tempDir, 'seg_0.tmp');
-        await File(segmentPath).writeAsBytes(testData);
+        server.listen((request) async {
+          request.response.statusCode = HttpStatus.ok;
+          request.response.contentLength = testData.length;
+          request.response.headers.set('etag', 'new-etag-v2');
+          request.response.headers.set('accept-ranges', 'bytes');
+          request.response.add(testData);
+          await request.response.close();
+        });
 
-        await repo.upsertSegment(
-          taskId: taskId,
-          index: 0,
-          start: 0,
-          end: testData.length - 1,
-          downloaded: testData.length,
-          status: 'completed',
-          segmentPath: segmentPath,
-          expectedBytes: testData.length,
-        );
+        {
+          final db = createDatabase(dbPath);
+          final repo = DownloadHistoryRepository(db);
 
-        await db.close();
-      }
-
-      // Phase 2: Restart engine and trigger retry (which does HEAD request and ETag validation)
-      {
-        final db2 = createDatabase(dbPath);
-        final repo2 = DownloadHistoryRepository(db2);
-
-        final engine = SegmentedHttpEngine(
-          historyRepo: repo2,
-          maxConcurrent: 2,
-          segmentCount: 1,
-          defaultOutputDir: tempAppDir.path,
-        );
-
-        // Initialize to load the task from DB
-        await engine.initialize();
-
-        // Task will be paused (resumable) - use resume() to trigger download
-        // which includes HEAD request and ETag validation
-        await engine.resume(taskId);
-
-        // Wait for the task to be processed and either complete or fail
-        // The ETag validation happens in _startDownload which runs asynchronously
-        DownloadTask? updatedTask;
-        for (int i = 0; i < 30; i++) {
-          await Future.delayed(const Duration(milliseconds: 200));
-          // Check if task exists in currentTasks
-          final tasks = engine.currentTasks;
-          final matchingTask = tasks.firstWhere(
-            (t) => t.id == taskId,
-            orElse: () => throw StateError('Task not found'),
+          // Status must be non-terminal so initialize()/getInterrupted() loads the
+          // task into the engine. Set tempDirectory to match segment location.
+          final tempDir = tempSegmentsDir.path;
+          final task = DownloadTask(
+            id: taskId,
+            url: serverUrl,
+            title: 'ETag Validation Test',
+            outputDirectory: tempOutputDir.path,
+            outputFilename: 'test.bin',
+            status: DownloadStatus.downloading,
+            createdAt: DateTime.now(),
+            totalBytes: testData.length,
+            eTag: 'old-etag-v1',
+            tempDirectory: tempDir,
           );
-          if (matchingTask.eTag == 'new-etag-v2') {
-            updatedTask = matchingTask;
-            break;
-          }
+
+          await repo.upsertTask(task);
+
+          final segmentPath = p.join(tempDir, 'seg_0.tmp');
+          await File(segmentPath).writeAsBytes(testData);
+
+          await repo.upsertSegment(
+            taskId: taskId,
+            index: 0,
+            start: 0,
+            end: testData.length - 1,
+            downloaded: testData.length,
+            status: 'completed',
+            segmentPath: segmentPath,
+            expectedBytes: testData.length,
+          );
+
+          await db.close();
         }
 
-        // Verify ETag was updated in memory (and thus will be persisted)
-        expect(updatedTask, isNotNull, reason: 'Task should have updated ETag');
-        expect(
-          updatedTask!.eTag,
-          equals('new-etag-v2'),
-          reason: 'ETag should be updated from server after resource change detected',
-        );
+        // Phase 2: Restart engine and trigger retry (which does HEAD request and ETag validation)
+        {
+          final db2 = createDatabase(dbPath);
+          final repo2 = DownloadHistoryRepository(db2);
 
-        // Give time for _persistTask to complete (it's async)
-        await Future.delayed(const Duration(milliseconds: 500));
+          final engine = SegmentedHttpEngine(
+            historyRepo: repo2,
+            maxConcurrent: 2,
+            segmentCount: 1,
+            defaultOutputDir: tempAppDir.path,
+          );
 
-        // Also verify in database - need to query fresh
-        final dbTask = await getTaskById(db2, taskId);
-        expect(dbTask, isNotNull);
-        expect(
-          dbTask!.eTag,
-          equals('new-etag-v2'),
-          reason: 'ETag should be persisted to database',
-        );
+          // Initialize to load the task from DB
+          await engine.initialize();
 
-        await engine.dispose();
-        await db2.close();
-      }
+          // Task will be paused (resumable) - use resume() to trigger download
+          // which includes HEAD request and ETag validation
+          await engine.resume(taskId);
 
-      await server.close();
-      await tempAppDir.delete(recursive: true);
-    });
+          // Wait for the task to be processed and either complete or fail
+          // The ETag validation happens in _startDownload which runs asynchronously
+          DownloadTask? updatedTask;
+          for (int i = 0; i < 30; i++) {
+            await Future.delayed(const Duration(milliseconds: 200));
+            // Check if task exists in currentTasks
+            final tasks = engine.currentTasks;
+            final matchingTask = tasks.firstWhere(
+              (t) => t.id == taskId,
+              orElse: () => throw StateError('Task not found'),
+            );
+            if (matchingTask.eTag == 'new-etag-v2') {
+              updatedTask = matchingTask;
+              break;
+            }
+          }
+
+          // Verify ETag was updated in memory (and thus will be persisted)
+          expect(
+            updatedTask,
+            isNotNull,
+            reason: 'Task should have updated ETag',
+          );
+          expect(
+            updatedTask!.eTag,
+            equals('new-etag-v2'),
+            reason: 'ETag should be updated from server after resource change detected',
+          );
+
+          // Give time for _persistTask to complete (it's async)
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Also verify in database - need to query fresh
+          final dbTask = await getTaskById(db2, taskId);
+          expect(dbTask, isNotNull);
+          expect(
+            dbTask!.eTag,
+            equals('new-etag-v2'),
+            reason: 'ETag should be persisted to database',
+          );
+
+          await engine.dispose();
+          await db2.close();
+        }
+
+        await server.close();
+        await tempAppDir.delete(recursive: true);
+      },
+    );
 
     test(
       'H. Database records reconcile with physical files after crash',
