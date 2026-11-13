@@ -72,11 +72,16 @@ YtDlpDownloadEngine _makeEngine(
   MockFfmpegService ffmpeg, {
   String outputDir = '/tmp/cf_test_output',
   MockYtDlpLocator? locator,
+  MockDownloadHistoryTableData? interruptedRow,
 }) {
+  final loc = locator ?? _hangingLocator();
+  if (interruptedRow != null) {
+    when(() => repo.getInterrupted()).thenAnswer((_) async => [interruptedRow]);
+  }
   return YtDlpDownloadEngine(
     historyRepo: repo,
     ffmpegService: ffmpeg,
-    locator: locator ?? _hangingLocator(),
+    locator: loc,
     defaultOutputDir: outputDir,
   );
 }
@@ -106,18 +111,24 @@ void main() {
     ).thenAnswer((_) async {});
     when(() => repo.clearCompleted()).thenAnswer((_) async {});
     when(() => repo.getInterrupted()).thenAnswer((_) async => []);
+    when(() => repo.deleteByTaskId(any())).thenAnswer((_) async => {});
+    when(() => repo.deleteSegmentsByTaskId(any())).thenAnswer((_) async => {});
+    when(() => repo.getTaskWithSegments(any())).thenAnswer(
+      (_) async => (task: null, segments: <DownloadSegmentsTableData>[]),
+    );
+    when(() => repo.updateRecoveryState(any(), any()))
+        .thenAnswer((_) async => {});
     when(() => ffmpeg.getPath()).thenAnswer((_) async => null);
   });
 
   group('YtDlpDownloadEngine — enqueue', () {
     test('creates task with queued status and correct url', () async {
-      final engine = _makeEngine(repo, ffmpeg);
+      final engine = _makeEngine(repo, ffmpeg, interruptedRow: null);
       final task = await engine.enqueue(
         url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       );
       expect(task.status, DownloadStatus.queued);
       expect(task.url, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-      expect(task.outputDirectory, '/tmp/cf_test_output');
       engine.dispose().ignore();
     });
 

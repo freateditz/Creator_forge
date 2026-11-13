@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:creator_forge/database/app_database.dart';
 import 'package:creator_forge/models/download_task.dart';
 import 'package:creator_forge/repositories/download_history_repository.dart';
 import 'package:creator_forge/services/download/segmented_http_engine.dart';
@@ -40,6 +41,24 @@ void main() {
       when(() => mockRepo.getSegments(any())).thenAnswer((_) async => []);
       when(() => mockRepo.deleteSegmentsByTaskId(any()))
           .thenAnswer((_) async {});
+      when(() => mockRepo.getTaskWithSegments(any())).thenAnswer(
+        (_) async => (task: null, segments: <DownloadSegmentsTableData>[]),
+      );
+      when(() => mockRepo.updateRecoveryState(any(), any()))
+          .thenAnswer((_) async {});
+      when(() => mockRepo.setMergingStarted(any())).thenAnswer((_) async {});
+      when(() => mockRepo.updateSegmentPath(any(), any(), any()))
+          .thenAnswer((_) async {});
+      when(() => mockRepo.verifySegments(any(), any()))
+          .thenAnswer((_) async => (0, 0, false));
+      when(
+        () => mockRepo.updateStatus(
+          any(),
+          any(),
+          errorMessage: any(named: 'errorMessage'),
+        ),
+      ).thenAnswer((_) async {});
+      when(() => mockRepo.updateStatus(any(), any())).thenAnswer((_) async {});
 
       tempOutputDir = await Directory.systemTemp.createTemp(
         'creator_forge_resume_test_',
@@ -106,7 +125,7 @@ void main() {
 
       final task = await engine.enqueue(
         url: url,
-        outputDirectory: tempOutputDir.path,
+        outputDirectory: '${tempOutputDir.path}_explicit',
       );
 
       DownloadTask? completedTask;
@@ -125,7 +144,7 @@ void main() {
       expect(completedTask, isNotNull);
       expect(completedTask!.status, DownloadStatus.completed);
       final finalFile = File(
-        p.join(tempOutputDir.path, completedTask.outputFilename!),
+        p.join(completedTask.outputDirectory, completedTask.outputFilename!),
       );
       expect(finalFile.existsSync(), isTrue);
       expect(finalFile.lengthSync(), fileData.length);

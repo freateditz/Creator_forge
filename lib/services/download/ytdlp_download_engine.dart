@@ -9,9 +9,12 @@ import 'package:uuid/uuid.dart';
 import '../../core/config/app_config.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/utils/validators.dart';
+import '../../models/app_settings.dart';
 import '../../models/download_task.dart';
 import '../../models/media_info.dart';
 import '../../repositories/download_history_repository.dart';
+import '../../services/download/destination_resolver.dart';
+import '../../services/download/file_category_classifier.dart';
 import '../ffmpeg/ffmpeg_service.dart';
 import 'download_engine.dart';
 import 'download_progress_parser.dart';
@@ -25,9 +28,12 @@ class YtDlpDownloadEngine implements DownloadEngine {
   final YtDlpLocator _locator;
   final _log = AppLogger.get('YtDlpDownloadEngine');
   final _uuid = const Uuid();
+  final _destinationResolver = DestinationResolver.instance;
+  final _classifier = FileCategoryClassifier.instance;
 
   int maxConcurrent;
   String defaultOutputDir;
+  AppSettings? _appSettings;
 
   final _controller = StreamController<List<DownloadTask>>.broadcast();
   final _tasks = <String, DownloadTask>{};
@@ -49,7 +55,18 @@ class YtDlpDownloadEngine implements DownloadEngine {
            metadataResolver ?? MetadataResolver(locator: locator),
        _locator = locator ?? YtDlpLocator.instance,
        defaultOutputDir =
-           defaultOutputDir ?? AppConfig.instance.defaultDownloadsDir;
+           defaultOutputDir ??
+           (() {
+             try {
+               return AppConfig.instance.defaultDownloadsDir;
+             } catch (_) {
+               return Directory.systemTemp.path;
+             }
+           })();
+
+  void updateSettings(AppSettings settings) {
+    _appSettings = settings;
+  }
 
   // ── Public interface ────────────────────────────────────────────────────────
 
@@ -75,22 +92,59 @@ class YtDlpDownloadEngine implements DownloadEngine {
   }) async {
     final validated = Validators.validateUrl(url);
     final id = _uuid.v4();
-    final dir = outputDirectory ?? defaultOutputDir;
 
-    await Directory(dir).create(recursive: true);
+    final suggestedFilename =
+        cachedMetadata?.title ??
+        validated.pathSegments.lastOrNull ??
+        'download';
+
+    // Classify the file based on available information
+    final classification = _classifier.classify(
+      mimeType: null, // yt-dlp handles media files, classification by extension
+      contentDispositionFilename: null,
+      finalFilename: suggestedFilename,
+      browserFilename: cachedMetadata?.title,
+      url: validated.toString(),
+    );
+
+    final category = classification.category;
+
+    // Resolve destination using the centralized resolver
+    // If outputDirectory was explicitly provided (not default), use it directly
+    // Otherwise use auto-organization
+    final settings =
+        _appSettings ??
+        AppSettings(
+          defaultDownloadsDir: defaultOutputDir,
+          tempDir: defaultOutputDir,
+        );
+
+    final (outputDir, outputFilename, finalPath) = await _destinationResolver
+        .resolve(
+          suggestedFilename: suggestedFilename,
+          category: category,
+          settings: settings,
+          customCategoryFolder: outputDirectory != defaultOutputDir
+              ? outputDirectory
+              : null,
+        );
 
     final task = DownloadTask(
       id: id,
       url: validated.toString(),
-      title: cachedMetadata?.title,
+      title: cachedMetadata?.title ?? outputFilename,
       thumbnailUrl: cachedMetadata?.thumbnailUrl,
       channelName: cachedMetadata?.uploaderName,
       durationSeconds: cachedMetadata?.durationSeconds,
       downloadType: downloadType,
       selectedFormat: formatSelector,
-      outputDirectory: dir,
+      outputDirectory: outputDir.path,
+      outputFilename: outputFilename,
+      category: category,
+      destinationFolder: outputDir.path,
       status: DownloadStatus.queued,
       createdAt: DateTime.now(),
+      tempDirectory: '', // Will be set during download
     );
 
     _tasks[id] = task;
@@ -142,7 +196,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
       status: DownloadStatus.cancelled,
       completedAt: DateTime.now(),
     );
-    await _cleanTaskTempDir(taskId);
+    await _cleanTaskTempDir(taskId, task.outputPath);
     final cancelledTask = _tasks[taskId];
     if (cancelledTask != null) await _persistTask(cancelledTask);
   }
@@ -156,22 +210,57 @@ class YtDlpDownloadEngine implements DownloadEngine {
       return;
     }
 
-    // Rebuild from scratch to clear all transient fields (error, progress,
-    // speed, ETA) — copyWith can't clear nullable fields to null.
-    _tasks[taskId] = DownloadTask(
-      id: task.id,
-      url: task.url,
-      title: task.title,
-      thumbnailUrl: task.thumbnailUrl,
-      channelName: task.channelName,
-      durationSeconds: task.durationSeconds,
-      downloadType: task.downloadType,
-      selectedFormat: task.selectedFormat,
-      selectedQuality: task.selectedQuality,
-      outputDirectory: task.outputDirectory,
-      status: DownloadStatus.queued,
-      createdAt: task.createdAt,
-    );
+    // Check if we can resume from existing temp files
+    final tempDir =
+        task.tempDirectory ??
+        p.join(
+          p.dirname(task.outputPath ?? task.outputDirectory),
+          '.creatorforge_temp',
+          taskId,
+        );
+
+    // For yt-dlp, we use --continue flag which handles partial downloads
+    // Check if there are any partial files in temp dir
+    bool hasPartialFiles = false;
+    if (await Directory(tempDir).exists()) {
+      final entities = await Directory(tempDir).list().toList();
+      hasPartialFiles = entities.any(
+        (e) =>
+            e is File &&
+            (e.path.endsWith('.part') ||
+                e.path.endsWith('.ytdl') ||
+                e.path.endsWith('.tmp')),
+      );
+    }
+
+    if (hasPartialFiles) {
+      _log.info(
+        'Retry $taskId: Found partial files. Will resume with --continue.',
+      );
+      _tasks[taskId] = task.copyWith(
+        status: DownloadStatus.queued,
+        progress: 0,
+        speedBps: null,
+        etaSeconds: null,
+        errorMessage: null,
+      );
+      _resumedTasks.add(taskId);
+    } else {
+      // No partial files - clean start
+      _log.info('Retry $taskId: No partial files found. Clean restart.');
+      _tasks[taskId] = task.copyWith(
+        status: DownloadStatus.queued,
+        progress: 0,
+        speedBps: null,
+        etaSeconds: null,
+        downloadedBytes: 0,
+        errorMessage: null,
+        outputPath: null,
+        completedAt: null,
+      );
+      await _cleanTaskTempDir(taskId, task.outputPath);
+      await _historyRepo.deleteSegmentsByTaskId(taskId);
+    }
     _queue.add(taskId);
     await _persistTask(_tasks[taskId]!);
     _emit();
@@ -182,6 +271,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
   Future<void> remove(String taskId) async {
     await cancel(taskId);
     _tasks.remove(taskId);
+    await _historyRepo.deleteByTaskId(taskId);
     _emit();
   }
 
@@ -214,10 +304,60 @@ class YtDlpDownloadEngine implements DownloadEngine {
 
   // ── Initialisation ──────────────────────────────────────────────────────────
 
-  /// Load interrupted tasks from DB on startup and mark them as failed.
+  /// Load interrupted tasks from DB on startup and determine recovery state.
   Future<void> initialize() async {
     final interrupted = await _historyRepo.getInterrupted();
     for (final row in interrupted) {
+      final taskData = await _historyRepo.getTaskWithSegments(row.taskId);
+      final segments = taskData.segments;
+      final tempDir =
+          row.tempDirectory ??
+          p.join(p.dirname(row.outputPath), '.creatorforge_temp', row.taskId);
+
+      // Check for partial files in temp directory
+      bool hasPartialFiles = false;
+      if (await Directory(tempDir).exists()) {
+        final entities = await Directory(tempDir).list().toList();
+        hasPartialFiles = entities.any(
+          (e) =>
+              e is File &&
+              (e.path.endsWith('.part') ||
+                  e.path.endsWith('.ytdl') ||
+                  e.path.endsWith('.tmp')),
+        );
+      }
+
+      // Also check for .part file at final destination
+      final partFile = File('${row.outputPath}.part');
+      final hasFinalPartFile = await partFile.exists();
+
+      String recoveryState;
+      DownloadStatus initialStatus;
+      String? errorMessage;
+
+      if (row.status == 'merging' || hasFinalPartFile) {
+        // Was in merging phase or has .part file - check if merge was completed
+        recoveryState = 'merging';
+        initialStatus = DownloadStatus.failed;
+        errorMessage =
+            'Download interrupted during finalization. Tap Retry to restart.';
+      } else if (hasPartialFiles) {
+        // Has partial files - can resume with --continue
+        recoveryState = 'resumable';
+        initialStatus = DownloadStatus.paused;
+        errorMessage = 'Download interrupted. Tap Resume to continue.';
+      } else if (segments.isNotEmpty) {
+        // Has segments in DB but no files - corrupted
+        recoveryState = 'corrupted';
+        initialStatus = DownloadStatus.failed;
+        errorMessage = 'Download data corrupted. Tap Retry to restart.';
+      } else {
+        // No recoverable state
+        recoveryState = 'unknown';
+        initialStatus = DownloadStatus.failed;
+        errorMessage = 'Interrupted — tap Retry to download again.';
+      }
+
       final task = DownloadTask(
         id: row.taskId,
         url: row.url,
@@ -225,17 +365,28 @@ class YtDlpDownloadEngine implements DownloadEngine {
         thumbnailUrl: row.thumbnailUrl,
         channelName: row.channelName,
         outputDirectory: row.outputPath,
-        status: DownloadStatus.failed,
-        errorMessage: 'Interrupted — tap Retry to download again.',
+        status: initialStatus,
+        errorMessage: errorMessage,
         createdAt: row.createdAt,
         completedAt: row.completedAt,
+        totalBytes: row.fileSizeBytes,
+        downloadedBytes: row.actualBytes,
+        eTag: row.eTag,
+        lastModified: row.lastModified,
+        profile: row.profile,
+        tempDirectory: row.tempDirectory,
+        recoveryState: recoveryState,
+        originalFileSize: row.fileSizeBytes,
+        originalETag: row.eTag,
       );
       _tasks[row.taskId] = task;
-      // Mark as failed in DB
+
+      // Update DB with recovery state
+      await _historyRepo.updateRecoveryState(row.taskId, recoveryState);
       await _historyRepo.updateStatus(
         row.taskId,
-        'failed',
-        errorMessage: 'Interrupted on previous session.',
+        _statusToString(initialStatus),
+        errorMessage: errorMessage,
       );
     }
     _emit();
@@ -271,7 +422,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
 
     // The task may have been removed or cancelled while the locator was running.
     if (!_isTaskActive(taskId)) {
-      await _cleanTaskTempDir(taskId);
+      await _cleanTaskTempDir(taskId, task.outputPath);
       _activeCount--;
       _processQueue();
       return;
@@ -287,8 +438,17 @@ class YtDlpDownloadEngine implements DownloadEngine {
       return;
     }
 
-    // ── Temp directory ──────────────────────────────────────────────────────
-    final tempDir = Directory(p.join(AppConfig.instance.tempDir, taskId));
+    // ── Determine final output path and temp directory ──────────────────────
+    // The final path is needed to ensure temp files are on the same volume
+    final outputFilename = task.outputFilename ?? task.title ?? 'download';
+    final finalPath = p.join(task.outputDirectory, outputFilename);
+
+    // Resolve temp directory on the same volume as the final destination
+    // for atomic rename (critical for crash-safe finalization)
+    final tempDir = await _destinationResolver.resolveTempDirectory(
+      taskId: taskId,
+      finalDestinationPath: finalPath,
+    );
     try {
       await tempDir.create(recursive: true);
     } catch (e) {
@@ -300,6 +460,9 @@ class YtDlpDownloadEngine implements DownloadEngine {
       return;
     }
 
+    // Update task with temp directory for recovery
+    _updateTask(taskId, tempDirectory: tempDir.path);
+
     // ── Build args ───────────────────────────────────────────────────────────
     final outputTemplate = p.join(tempDir.path, '%(title)s [%(id)s].%(ext)s');
 
@@ -309,7 +472,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
 
     // Task may have been cancelled while waiting for FFmpeg path.
     if (!_isTaskActive(taskId)) {
-      await _cleanTaskTempDir(taskId);
+      await _cleanTaskTempDir(taskId, task.outputPath);
       _activeCount--;
       _processQueue();
       return;
@@ -355,7 +518,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
     try {
       process = await Process.start(ytdlpPath, args, runInShell: false);
     } catch (e) {
-      await _cleanTaskTempDir(taskId);
+      await _cleanTaskTempDir(taskId, task.outputPath);
       _finishTask(
         taskId,
         status: DownloadStatus.failed,
@@ -417,7 +580,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
 
     final currentTask = _tasks[taskId];
     if (currentTask == null || currentTask.status == DownloadStatus.cancelled) {
-      await _cleanTaskTempDir(taskId);
+      await _cleanTaskTempDir(taskId, currentTask?.outputPath);
       _activeCount--;
       _processQueue();
       return;
@@ -437,7 +600,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
         // Verify the file is non-empty before accepting it.
         final fileStat = await outputFile.stat();
         if (fileStat.size == 0) {
-          await _cleanTaskTempDir(taskId);
+          await _cleanTaskTempDir(taskId, task.outputPath);
           _finishTask(
             taskId,
             status: DownloadStatus.failed,
@@ -450,8 +613,13 @@ class YtDlpDownloadEngine implements DownloadEngine {
         final finalPath = await _moveToOutputDir(
           outputFile,
           task.outputDirectory,
+          task.category,
         );
-        await _cleanTaskTempDir(taskId);
+        await _cleanTaskTempDir(taskId, task.outputPath);
+
+        // Clear recovery state on success
+        await _historyRepo.updateRecoveryState(taskId, 'completed');
+
         _finishTask(
           taskId,
           status: DownloadStatus.completed,
@@ -460,7 +628,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
           completedAt: DateTime.now(),
         );
       } else {
-        await _cleanTaskTempDir(taskId);
+        await _cleanTaskTempDir(taskId, task.outputPath);
         _finishTask(
           taskId,
           status: DownloadStatus.failed,
@@ -469,7 +637,15 @@ class YtDlpDownloadEngine implements DownloadEngine {
         );
       }
     } else {
-      await _cleanTaskTempDir(taskId);
+      // Check if there's a .part file at final destination (merge was in progress)
+      final outputFilename = task.outputFilename ?? task.title ?? 'download';
+      final finalPath = p.join(task.outputDirectory, outputFilename);
+      final partFile = File('$finalPath.part');
+      if (await partFile.exists()) {
+        await _historyRepo.updateRecoveryState(taskId, 'merging_failed');
+      }
+
+      await _cleanTaskTempDir(taskId, task.outputPath);
       final rawError = errorBuffer.toString().trim();
       _finishTask(
         taskId,
@@ -623,33 +799,54 @@ class YtDlpDownloadEngine implements DownloadEngine {
     }
   }
 
-  Future<String> _moveToOutputDir(File file, String outputDir) async {
+  Future<String> _moveToOutputDir(
+    File file,
+    String outputDir,
+    FileCategory? category,
+  ) async {
     await Directory(outputDir).create(recursive: true);
     final filename = p.basename(file.path);
     final sanitized = Validators.sanitizeFilename(filename);
-    var dest = p.join(outputDir, sanitized);
 
-    // Avoid overwriting existing files
-    if (await File(dest).exists()) {
-      final ext = p.extension(dest);
-      final stem = p.basenameWithoutExtension(dest);
-      int i = 1;
-      while (await File(dest).exists()) {
-        dest = p.join(outputDir, '$stem ($i)$ext');
-        i++;
-      }
-    }
+    // Use destination resolver to ensure unique path
+    final uniquePath = await _destinationResolver.ensureUniquePath(
+      basePath: p.join(outputDir, sanitized),
+      category: category ?? FileCategory.other,
+      settings:
+          _appSettings ??
+          AppSettings(
+            defaultDownloadsDir: outputDir,
+            tempDir: AppConfig.instance.tempDir,
+          ),
+    );
 
-    await file.rename(dest);
-    return dest;
+    await file.rename(uniquePath);
+    return uniquePath;
   }
 
-  Future<void> _cleanTaskTempDir(String taskId) async {
+  Future<void> _cleanTaskTempDir(String taskId, String? outputPath) async {
     try {
       final dir = Directory(p.join(AppConfig.instance.tempDir, taskId));
       if (await dir.exists()) await dir.delete(recursive: true);
     } catch (e) {
       _log.warning('Failed to clean temp dir for task $taskId.', e);
+    }
+    // Also clean up new location pattern (under destination parent)
+    if (outputPath != null) {
+      try {
+        final parentDir = p.dirname(outputPath);
+        final tempDir = Directory(
+          p.join(parentDir, '.creatorforge_temp', taskId),
+        );
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+        }
+      } catch (e) {
+        _log.warning(
+          'Failed to clean new-location temp dir for task $taskId.',
+          e,
+        );
+      }
     }
   }
 
@@ -664,6 +861,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
     String? errorMessage,
     String? outputPath,
     DateTime? completedAt,
+    String? tempDirectory,
   }) {
     final task = _tasks[taskId];
     if (task == null) return;
@@ -677,6 +875,7 @@ class YtDlpDownloadEngine implements DownloadEngine {
       errorMessage: errorMessage,
       outputPath: outputPath,
       completedAt: completedAt,
+      tempDirectory: tempDirectory ?? task.tempDirectory,
     );
     _emit();
   }
@@ -732,4 +931,15 @@ class YtDlpDownloadEngine implements DownloadEngine {
       _controller.add(currentTasks);
     }
   }
+
+  String _statusToString(DownloadStatus status) => switch (status) {
+    DownloadStatus.queued => 'queued',
+    DownloadStatus.resolving => 'resolving',
+    DownloadStatus.downloading => 'downloading',
+    DownloadStatus.paused => 'paused',
+    DownloadStatus.merging => 'merging',
+    DownloadStatus.completed => 'completed',
+    DownloadStatus.failed => 'failed',
+    DownloadStatus.cancelled => 'cancelled',
+  };
 }

@@ -34,6 +34,12 @@ class DownloadSegmentsTable extends Table {
   IntColumn get httpStatus => integer().nullable()();
   DateTimeColumn get lastUpdatedAt => dateTime()();
 
+  // ── Segment file path for verification ──────────────────────────────────────
+  /// Path to the segment file. Segments are stored at
+  /// {tempDir}/seg_{segmentIndex}.tmp - this column allows verification
+  /// that the DB record matches an actual file on disk.
+  TextColumn get segmentPath => text().nullable()();
+
   @override
   List<Set<Column>> get uniqueKeys => [
     {taskId, segmentIndex},

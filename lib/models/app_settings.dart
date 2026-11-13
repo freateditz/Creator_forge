@@ -15,6 +15,10 @@ class AppSettings extends Equatable {
   final String selectedBrowserId;
   final String downloadProfile; // 'balanced' (4), 'fast' (8), 'maximum' (16)
 
+  // Phase 2: Automatic File Organization
+  final bool autoOrganizeEnabled;
+  final Map<String, String>? categoryFolderOverrides;
+
   const AppSettings({
     required this.defaultDownloadsDir,
     required this.tempDir,
@@ -29,6 +33,8 @@ class AppSettings extends Equatable {
     this.httpSegments = 8,
     this.selectedBrowserId = 'edge',
     this.downloadProfile = 'fast',
+    this.autoOrganizeEnabled = true,
+    this.categoryFolderOverrides,
   });
 
   AppSettings copyWith({
@@ -45,6 +51,8 @@ class AppSettings extends Equatable {
     int? httpSegments,
     String? selectedBrowserId,
     String? downloadProfile,
+    bool? autoOrganizeEnabled,
+    Map<String, String>? categoryFolderOverrides,
   }) {
     return AppSettings(
       defaultDownloadsDir: defaultDownloadsDir ?? this.defaultDownloadsDir,
@@ -61,6 +69,9 @@ class AppSettings extends Equatable {
       httpSegments: httpSegments ?? this.httpSegments,
       selectedBrowserId: selectedBrowserId ?? this.selectedBrowserId,
       downloadProfile: downloadProfile ?? this.downloadProfile,
+      autoOrganizeEnabled: autoOrganizeEnabled ?? this.autoOrganizeEnabled,
+      categoryFolderOverrides:
+          categoryFolderOverrides ?? this.categoryFolderOverrides,
     );
   }
 
@@ -78,6 +89,8 @@ class AppSettings extends Equatable {
     'httpSegments': httpSegments,
     'selectedBrowserId': selectedBrowserId,
     'downloadProfile': downloadProfile,
+    'autoOrganizeEnabled': autoOrganizeEnabled,
+    'categoryFolderOverrides': categoryFolderOverrides,
   };
 
   factory AppSettings.fromJson(
@@ -101,6 +114,12 @@ class AppSettings extends Equatable {
       httpSegments: json['httpSegments'] as int? ?? 8,
       selectedBrowserId: json['selectedBrowserId'] as String? ?? 'edge',
       downloadProfile: json['downloadProfile'] as String? ?? 'fast',
+      autoOrganizeEnabled: json['autoOrganizeEnabled'] as bool? ?? true,
+      categoryFolderOverrides: json['categoryFolderOverrides'] != null
+          ? Map<String, String>.from(
+              json['categoryFolderOverrides'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 
@@ -119,5 +138,7 @@ class AppSettings extends Equatable {
     httpSegments,
     selectedBrowserId,
     downloadProfile,
+    autoOrganizeEnabled,
+    categoryFolderOverrides,
   ];
 }

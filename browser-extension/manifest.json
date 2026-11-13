@@ -10,7 +10,8 @@
     "nativeMessaging",
     "storage",
     "tabs",
-    "downloads"
+    "downloads",
+    "contextMenus"
   ],
 
   "host_permissions": [],

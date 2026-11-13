@@ -4,6 +4,7 @@ import 'dart:async';
 import '../../core/logging/app_logger.dart';
 import '../../core/utils/validators.dart';
 import '../../models/browser_download_request.dart';
+import '../../models/download_task.dart';
 import '../../models/media_info.dart';
 import '../download/download_engine.dart';
 import '../download/metadata_resolver.dart';
@@ -33,6 +34,9 @@ class BrowserRequestHandler {
       BrowserConnectionStatusMsg() => _handleConnectionStatus(message),
       BrowserAnalyzeMsg() => await _handleAnalyze(message),
       BrowserDownloadMsg() => await _handleDownload(message),
+      BrowserOrdinaryFileDownloadMsg() => await _handleOrdinaryFileDownload(
+        message,
+      ),
     };
   }
 
@@ -183,6 +187,84 @@ class BrowserRequestHandler {
       return BrowserResponse.downloadAccepted(requestId: rid, taskId: task.id);
     } catch (e) {
       _log.warning('Failed to enqueue browser download: $e');
+      return BrowserResponse.downloadRejected(
+        requestId: rid,
+        error: 'Could not start download: $e',
+      );
+    }
+  }
+
+  Future<BrowserResponse> _handleOrdinaryFileDownload(
+    BrowserOrdinaryFileDownloadMsg msg,
+  ) async {
+    final rid = msg.requestId;
+    final targetUrl = msg.url;
+
+    if (targetUrl.isEmpty) {
+      return BrowserResponse.downloadRejected(
+        requestId: rid,
+        error: 'URL is required.',
+      );
+    }
+
+    // Validate URL — reject unsafe schemes, loopback, and local paths.
+    Uri validated;
+    try {
+      validated = Validators.validateUrl(targetUrl);
+    } catch (e) {
+      return BrowserResponse.downloadRejected(
+        requestId: rid,
+        error: e.toString(),
+      );
+    }
+
+    // Reject loopback/private IP destinations from browser messages.
+    if (_isLocalHost(validated.host)) {
+      return BrowserResponse.downloadRejected(
+        requestId: rid,
+        error: 'Downloads from local network addresses are not permitted.',
+      );
+    }
+
+    // Build a safe filename from the provided filename or URL
+    String filename = msg.filename ?? '';
+    if (filename.isEmpty) {
+      filename = Uri.tryParse(targetUrl)?.pathSegments.lastOrNull ?? 'download';
+    }
+    filename = Validators.sanitizeFilename(filename);
+
+    // Create cached metadata with the provided title/filename
+    final cachedMeta = MediaInfo(
+      url: validated.toString(),
+      title: filename,
+      durationSeconds: null,
+      formats: const [],
+      resolvedAt: DateTime.now(),
+    );
+
+    try {
+      // Route ordinary files to the segmented HTTP engine for parallel segment downloads
+      final segmented = _segmentedEngine;
+      if (segmented == null) {
+        return BrowserResponse.downloadRejected(
+          requestId: rid,
+          error: 'Segmented HTTP engine not available.',
+        );
+      }
+
+      _log.info('Routing ordinary file to segmented engine: $targetUrl');
+
+      final task = await segmented.enqueue(
+        url: validated.toString(),
+        formatSelector: null,
+        downloadType: DownloadType.videoAndAudio, // unused for direct downloads
+        cachedMetadata: cachedMeta,
+      );
+      _onTaskEnqueued?.call(task.id);
+      _log.info('Ordinary file download enqueued: ${task.id} for $targetUrl');
+      return BrowserResponse.downloadAccepted(requestId: rid, taskId: task.id);
+    } catch (e) {
+      _log.warning('Failed to enqueue ordinary file download: $e');
       return BrowserResponse.downloadRejected(
         requestId: rid,
         error: 'Could not start download: $e',

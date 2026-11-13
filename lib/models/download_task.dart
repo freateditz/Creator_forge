@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../services/download/file_category_classifier.dart';
+
 enum DownloadStatus {
   queued,
   resolving,
@@ -25,6 +27,8 @@ class DownloadTask extends Equatable {
   final String? selectedQuality;
   final String outputDirectory;
   final String? outputFilename;
+  final FileCategory? category;
+  final String? destinationFolder;
   final DownloadStatus status;
   final double progress;
   final int? speedBps;
@@ -39,6 +43,22 @@ class DownloadTask extends Equatable {
   final DateTime createdAt;
   final DateTime? completedAt;
 
+  // ── Crash recovery metadata ───────────────────────────────────────────────
+  /// When the task was in merging state - used to detect interrupted merge
+  final DateTime? mergingStartedAt;
+
+  /// Recovery state: unknown, resumable, corrupted, merging, merging_failed
+  final String? recoveryState;
+
+  /// Original expected file size - verified after crash recovery
+  final int? originalFileSize;
+
+  /// Original ETag - used to validate resource identity before segment reuse
+  final String? originalETag;
+
+  /// Temporary directory where segments are stored
+  final String? tempDirectory;
+
   const DownloadTask({
     required this.id,
     required this.url,
@@ -51,6 +71,8 @@ class DownloadTask extends Equatable {
     this.selectedQuality,
     required this.outputDirectory,
     this.outputFilename,
+    this.category,
+    this.destinationFolder,
     this.status = DownloadStatus.queued,
     this.progress = 0.0,
     this.speedBps,
@@ -64,6 +86,12 @@ class DownloadTask extends Equatable {
     this.profile,
     required this.createdAt,
     this.completedAt,
+    // ── Crash recovery metadata ─────────────────────────────────────────────
+    this.mergingStartedAt,
+    this.recoveryState,
+    this.originalFileSize,
+    this.originalETag,
+    this.tempDirectory,
   });
 
   DownloadTask copyWith({
@@ -78,6 +106,8 @@ class DownloadTask extends Equatable {
     String? selectedQuality,
     String? outputDirectory,
     String? outputFilename,
+    FileCategory? category,
+    String? destinationFolder,
     DownloadStatus? status,
     double? progress,
     int? speedBps,
@@ -91,6 +121,12 @@ class DownloadTask extends Equatable {
     String? profile,
     DateTime? createdAt,
     DateTime? completedAt,
+    // ── Crash recovery metadata ─────────────────────────────────────────────
+    DateTime? mergingStartedAt,
+    String? recoveryState,
+    int? originalFileSize,
+    String? originalETag,
+    String? tempDirectory,
   }) {
     return DownloadTask(
       id: id ?? this.id,
@@ -104,6 +140,8 @@ class DownloadTask extends Equatable {
       selectedQuality: selectedQuality ?? this.selectedQuality,
       outputDirectory: outputDirectory ?? this.outputDirectory,
       outputFilename: outputFilename ?? this.outputFilename,
+      category: category ?? this.category,
+      destinationFolder: destinationFolder ?? this.destinationFolder,
       status: status ?? this.status,
       progress: progress ?? this.progress,
       speedBps: speedBps ?? this.speedBps,
@@ -117,6 +155,12 @@ class DownloadTask extends Equatable {
       profile: profile ?? this.profile,
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? this.completedAt,
+      // ── Crash recovery metadata ─────────────────────────────────────────────
+      mergingStartedAt: mergingStartedAt ?? this.mergingStartedAt,
+      recoveryState: recoveryState ?? this.recoveryState,
+      originalFileSize: originalFileSize ?? this.originalFileSize,
+      originalETag: originalETag ?? this.originalETag,
+      tempDirectory: tempDirectory ?? this.tempDirectory,
     );
   }
 
@@ -125,10 +169,34 @@ class DownloadTask extends Equatable {
     id,
     url,
     title,
+    thumbnailUrl,
+    channelName,
+    durationSeconds,
+    downloadType,
+    selectedFormat,
+    selectedQuality,
+    outputDirectory,
+    outputFilename,
+    category,
+    destinationFolder,
     status,
     progress,
+    speedBps,
+    etaSeconds,
+    totalBytes,
+    downloadedBytes,
+    errorMessage,
+    outputPath,
     eTag,
     lastModified,
     profile,
+    createdAt,
+    completedAt,
+    // ── Crash recovery metadata ─────────────────────────────────────────────
+    mergingStartedAt,
+    recoveryState,
+    originalFileSize,
+    originalETag,
+    tempDirectory,
   ];
 }

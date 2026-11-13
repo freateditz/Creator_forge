@@ -12,6 +12,7 @@ enum IncomingMsgType {
   connectionStatus,
   analyzeMedia,
   downloadRequest,
+  ordinaryFileDownload,
   unknown;
 
   static IncomingMsgType fromString(String? s) => switch (s) {
@@ -19,6 +20,7 @@ enum IncomingMsgType {
     'CONNECTION_STATUS' => IncomingMsgType.connectionStatus,
     'ANALYZE_MEDIA' => IncomingMsgType.analyzeMedia,
     'DOWNLOAD_REQUEST' => IncomingMsgType.downloadRequest,
+    'ORDINARY_FILE_DOWNLOAD' => IncomingMsgType.ordinaryFileDownload,
     _ => IncomingMsgType.unknown,
   };
 }
@@ -76,6 +78,17 @@ sealed class BrowserMessage {
         formatSelector: json['formatSelector'] as String?,
         durationSeconds: (json['durationSeconds'] as num?)?.toInt(),
       ),
+      IncomingMsgType.ordinaryFileDownload => BrowserOrdinaryFileDownloadMsg(
+        version: version,
+        requestId: requestId,
+        url: (json['url'] as String?) ?? '',
+        filename: json['filename'] as String?,
+        mimeType: json['mimeType'] as String?,
+        fileSize: (json['fileSize'] as num?)?.toInt(),
+        referrer: json['referrer'] as String?,
+        pageUrl: json['pageUrl'] as String?,
+        pageTitle: json['pageTitle'] as String?,
+      ),
       IncomingMsgType.unknown => null,
     };
   }
@@ -131,6 +144,27 @@ class BrowserDownloadMsg extends BrowserMessage {
     this.downloadType = DownloadType.videoAndAudio,
     this.formatSelector,
     this.durationSeconds,
+  });
+}
+
+class BrowserOrdinaryFileDownloadMsg extends BrowserMessage {
+  final String url;
+  final String? filename;
+  final String? mimeType;
+  final int? fileSize;
+  final String? referrer;
+  final String? pageUrl;
+  final String? pageTitle;
+  const BrowserOrdinaryFileDownloadMsg({
+    required super.version,
+    required super.requestId,
+    required this.url,
+    this.filename,
+    this.mimeType,
+    this.fileSize,
+    this.referrer,
+    this.pageUrl,
+    this.pageTitle,
   });
 }
 

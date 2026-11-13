@@ -1230,7 +1230,13 @@ class _BrowserQueue extends ConsumerWidget {
           Padding(
             key: ValueKey(task.id),
             padding: const EdgeInsets.only(bottom: 8),
-            child: DownloadTaskTile(task: task),
+            child: DownloadTaskTile(
+              task: task,
+              isSelected: false,
+              isSelectionMode: false,
+              onTap: () {},
+              onLongPress: () {},
+            ),
           ),
       ],
     );

@@ -26,6 +26,7 @@ dependencies:
   file_selector: ^1.0.3
   cached_network_image: ^3.4.1
   tray_manager: ^0.8.3
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:

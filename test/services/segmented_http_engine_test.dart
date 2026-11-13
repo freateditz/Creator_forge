@@ -1,9 +1,11 @@
 import 'dart:io';
 
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 
+import 'package:creator_forge/database/app_database.dart';
 import 'package:creator_forge/models/download_task.dart';
 import 'package:creator_forge/repositories/download_history_repository.dart';
 import 'package:creator_forge/services/download/segmented_http_engine.dart';
@@ -21,6 +23,9 @@ void main() {
 
     setUpAll(() async {
       registerFallbackValue(
+        DownloadHistoryTableCompanion(taskId: const drift.Value('fallback-id')),
+      );
+      registerFallbackValue(
         DownloadTask(
           id: 'fallback-id',
           url: 'https://example.com',
@@ -35,8 +40,53 @@ void main() {
 
     setUp(() async {
       mockRepo = MockDownloadHistoryRepository();
-      when(() => mockRepo.upsertTask(any())).thenAnswer((_) async {});
+
+      // Set up all mock methods to return proper Future<void>
+      when(() => mockRepo.upsertTask(any()))
+          .thenAnswer((_) => Future<void>.value());
       when(() => mockRepo.getInterrupted()).thenAnswer((_) async => []);
+      when(() => mockRepo.getTaskWithSegments(any())).thenAnswer(
+        (_) async => (task: null, segments: <DownloadSegmentsTableData>[]),
+      );
+
+      when(() => mockRepo.updateRecoveryState(any(), any()))
+          .thenAnswer((_) => Future<void>.value());
+      when(() => mockRepo.setMergingStarted(any()))
+          .thenAnswer((_) => Future<void>.value());
+      when(() => mockRepo.updateSegmentPath(any(), any(), any()))
+          .thenAnswer((_) => Future<void>.value());
+      when(() => mockRepo.verifySegments(any(), any()))
+          .thenAnswer((_) => Future.value((0, 0, false)));
+
+      when(
+        () => mockRepo.updateStatus(
+          any(),
+          any(),
+          errorMessage: any(named: 'errorMessage'),
+        ),
+      ).thenAnswer((_) => Future<void>.value());
+      when(() => mockRepo.updateStatus(any(), any()))
+          .thenAnswer((_) => Future<void>.value());
+
+      when(() => mockRepo.deleteSegmentsByTaskId(any()))
+          .thenAnswer((_) => Future<void>.value());
+      when(() => mockRepo.deleteByTaskId(any()))
+          .thenAnswer((_) => Future<void>.value());
+      when(() => mockRepo.clearCompleted())
+          .thenAnswer((_) => Future<void>.value());
+      when(() => mockRepo.getSegments(any()))
+          .thenAnswer((_) async => <DownloadSegmentsTableData>[]);
+      when(
+        () => mockRepo.upsertSegment(
+          taskId: any(named: 'taskId'),
+          index: any(named: 'index'),
+          start: any(named: 'start'),
+          end: any(named: 'end'),
+          downloaded: any(named: 'downloaded'),
+          status: any(named: 'status'),
+          segmentPath: any(named: 'segmentPath'),
+        ),
+      ).thenAnswer((_) => Future<void>.value());
 
       tempAppDir = await Directory.systemTemp.createTemp(
         'creator_forge_test_app_',
@@ -112,7 +162,7 @@ void main() {
 
       final task = await engine.enqueue(
         url: url,
-        outputDirectory: tempOutputDir.path,
+        outputDirectory: '${tempOutputDir.path}_explicit',
       );
       expect(task.status, DownloadStatus.queued);
 
@@ -134,7 +184,7 @@ void main() {
       expect(completedTask.outputFilename, isNotNull);
 
       final finalFile = File(
-        p.join(tempOutputDir.path, completedTask.outputFilename!),
+        p.join(completedTask.outputDirectory, completedTask.outputFilename!),
       );
       expect(finalFile.existsSync(), isTrue);
       expect(finalFile.lengthSync(), fileData.length);
@@ -160,7 +210,7 @@ void main() {
       );
 
       DownloadTask? completedTask;
-      for (int i = 0; i < 50; i++) {
+      for (int i = 0; i < 100; i++) {
         await Future.delayed(const Duration(milliseconds: 100));
         final current = engine.currentTasks.firstWhere((t) => t.id == task.id);
         if (current.status == DownloadStatus.completed ||
@@ -172,12 +222,14 @@ void main() {
 
       await mockServer.close();
 
-      expect(completedTask, isNotNull);
-      if (completedTask!.status == DownloadStatus.failed) {
-        // ignore: avoid_print
-        print('FALLBACK TEST FAILED WITH: ${completedTask.errorMessage}');
-      }
-      expect(completedTask.status, DownloadStatus.completed);
+      expect(completedTask?.status, DownloadStatus.completed);
+      expect(completedTask?.outputFilename, isNotNull);
+
+      final finalFile = File(
+        p.join(completedTask!.outputDirectory, completedTask.outputFilename!),
+      );
+      expect(finalFile.existsSync(), isTrue);
+      expect(finalFile.lengthSync(), fileData.length);
     });
   });
 }

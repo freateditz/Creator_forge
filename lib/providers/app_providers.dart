@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -150,6 +151,103 @@ final segmentedEngineProvider = Provider<SegmentedHttpEngine>((ref) {
 final segmentedTasksProvider = StreamProvider<List<DownloadTask>>((ref) {
   return ref.watch(segmentedEngineProvider).tasksStream;
 });
+
+/// Unified stream that merges tasks from both download engines (yt-dlp + segmented HTTP).
+/// Provides a single source of truth for the Downloads page UI.
+final unifiedDownloadTasksProvider = StreamProvider<List<DownloadTask>>((ref) {
+  final ytDlpStream = ref.watch(downloadEngineProvider).tasksStream;
+  final segmentedStream = ref.watch(segmentedEngineProvider).tasksStream;
+
+  return _mergeTaskStreams(ytDlpStream, segmentedStream);
+});
+
+Stream<List<DownloadTask>> _mergeTaskStreams(
+  Stream<List<DownloadTask>> stream1,
+  Stream<List<DownloadTask>> stream2,
+) async* {
+  List<DownloadTask> latest1 = [];
+  List<DownloadTask> latest2 = [];
+
+  final controller = StreamController<List<DownloadTask>>.broadcast();
+
+  final sub1 = stream1.listen(
+    (tasks) {
+      latest1 = tasks;
+      _emitMerged(controller, latest1, latest2);
+    },
+    onError: controller.addError,
+    onDone: () => _emitMerged(controller, latest1, latest2),
+  );
+
+  final sub2 = stream2.listen(
+    (tasks) {
+      latest2 = tasks;
+      _emitMerged(controller, latest1, latest2);
+    },
+    onError: controller.addError,
+    onDone: () => _emitMerged(controller, latest1, latest2),
+  );
+
+  yield* controller.stream;
+
+  await sub1.cancel();
+  await sub2.cancel();
+}
+
+void _emitMerged(
+  StreamController<List<DownloadTask>> controller,
+  List<DownloadTask> tasks1,
+  List<DownloadTask> tasks2,
+) {
+  if (controller.isClosed) return;
+
+  // Merge by taskId, preferring non-null/non-empty fields from either list
+  final Map<String, DownloadTask> merged = {};
+
+  for (final task in tasks1) {
+    merged[task.id] = task;
+  }
+
+  for (final task in tasks2) {
+    if (merged.containsKey(task.id)) {
+      // If task exists in both, merge non-null fields
+      final existing = merged[task.id]!;
+      merged[task.id] = _mergeTasks(existing, task);
+    } else {
+      merged[task.id] = task;
+    }
+  }
+
+  // Sort by createdAt descending (newest first)
+  final sorted = merged.values.toList()
+    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+  controller.add(sorted);
+}
+
+DownloadTask _mergeTasks(DownloadTask task1, DownloadTask task2) {
+  // Prefer task2's non-null values over task1's, but preserve task1's if task2 has defaults
+  return task1.copyWith(
+    status: task2.status != DownloadStatus.queued ? task2.status : task1.status,
+    progress: task2.progress > 0 ? task2.progress : task1.progress,
+    speedBps: task2.speedBps ?? task1.speedBps,
+    etaSeconds: task2.etaSeconds ?? task1.etaSeconds,
+    totalBytes: task2.totalBytes ?? task1.totalBytes,
+    downloadedBytes: task2.downloadedBytes ?? task1.downloadedBytes,
+    errorMessage: task2.errorMessage ?? task1.errorMessage,
+    outputPath: task2.outputPath ?? task1.outputPath,
+    completedAt: task2.completedAt ?? task1.completedAt,
+    outputFilename: task2.outputFilename ?? task1.outputFilename,
+    title: task2.title ?? task1.title,
+    thumbnailUrl: task2.thumbnailUrl ?? task1.thumbnailUrl,
+    channelName: task2.channelName ?? task1.channelName,
+    durationSeconds: task2.durationSeconds ?? task1.durationSeconds,
+    selectedFormat: task2.selectedFormat ?? task1.selectedFormat,
+    selectedQuality: task2.selectedQuality ?? task1.selectedQuality,
+    category: task2.category ?? task1.category,
+    destinationFolder: task2.destinationFolder ?? task1.destinationFolder,
+  );
+}
 
 // ── Audio processing ─────────────────────────────────────────────────────────
 

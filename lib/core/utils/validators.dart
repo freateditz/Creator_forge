@@ -47,13 +47,59 @@ class Validators {
     return uri;
   }
 
+  static const _windowsReservedNames = {
+    'CON',
+    'PRN',
+    'AUX',
+    'NUL',
+    'COM1',
+    'COM2',
+    'COM3',
+    'COM4',
+    'COM5',
+    'COM6',
+    'COM7',
+    'COM8',
+    'COM9',
+    'LPT1',
+    'LPT2',
+    'LPT3',
+    'LPT4',
+    'LPT5',
+    'LPT6',
+    'LPT7',
+    'LPT8',
+    'LPT9',
+  };
+
   static String sanitizeFilename(String name) {
     if (name.isEmpty) return 'untitled';
-    return name
-        .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1f]'), '_')
+
+    // Remove path separators and path traversal components
+    String clean = name
+        .replaceAll(RegExp(r'[\\/]'), '_')
         .replaceAll(RegExp(r'\.{2,}'), '.')
+        .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1f]'), '_')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+
+    // Strip trailing dots and spaces (invalid on Windows)
+    while (clean.endsWith('.') || clean.endsWith(' ')) {
+      clean = clean.substring(0, clean.length - 1).trim();
+    }
+
+    if (clean.isEmpty) return 'download';
+
+    // Check Windows reserved names (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
+    final stem = clean.contains('.')
+        ? clean.substring(0, clean.indexOf('.')).toUpperCase()
+        : clean.toUpperCase();
+
+    if (_windowsReservedNames.contains(stem)) {
+      clean = 'file_$clean';
+    }
+
+    return clean;
   }
 
   static bool isValidPath(String path) {

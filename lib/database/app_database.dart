@@ -25,7 +25,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -102,6 +102,51 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(
           downloadHistoryTable,
           downloadHistoryTable.lastUpdatedAt as dynamic,
+        );
+      }
+      if (from < 5) {
+        // Add category + destination folder columns for automatic file
+        // organization (Phase 2).
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.category as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.destinationFolder as dynamic,
+        );
+      }
+      if (from < 6) {
+        // Add crash recovery and merge state tracking columns.
+        // These columns enable reliable interrupted-download recovery.
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.mergingStartedAt as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.recoveryState as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.originalFileSize as dynamic,
+        );
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.originalETag as dynamic,
+        );
+        // Add segment path column for verification
+        await m.addColumn(
+          downloadSegmentsTable,
+          downloadSegmentsTable.segmentPath as dynamic,
+        );
+      }
+      if (from < 7) {
+        // Persist the output filename so the engine can reconstruct the full
+        // output path after a crash / restart.
+        await m.addColumn(
+          downloadHistoryTable,
+          downloadHistoryTable.outputFilename as dynamic,
         );
       }
     },

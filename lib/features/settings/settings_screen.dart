@@ -11,6 +11,7 @@ import '../../core/design/design_tokens.dart';
 import '../../core/logging/app_logger.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../services/download/file_category_classifier.dart';
 import '../../providers/app_providers.dart';
 import '../../routing/route_paths.dart';
 
@@ -92,6 +93,62 @@ class SettingsScreen extends ConsumerWidget {
                             .read(appSettingsProvider.notifier)
                             .save((s) => s.copyWith(httpSegments: v)),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _SettingsSection(
+                    title: 'Automatic File Organization',
+                    children: [
+                      _SwitchTile(
+                        label: 'Auto-organize downloads by category',
+                        value: settings.autoOrganizeEnabled,
+                        icon: Icons.auto_awesome_outlined,
+                        onChanged: (v) => ref
+                            .read(appSettingsProvider.notifier)
+                            .save((s) => s.copyWith(autoOrganizeEnabled: v)),
+                      ),
+                      _FolderTile(
+                        label: 'Main Download Directory',
+                        value: settings.defaultDownloadsDir,
+                        icon: Icons.folder_open_outlined,
+                        onPick: (path) => ref
+                            .read(appSettingsProvider.notifier)
+                            .save((s) => s.copyWith(defaultDownloadsDir: path)),
+                      ),
+                      ...FileCategory.values.map((category) {
+                        final override =
+                            settings.categoryFolderOverrides?[category.name];
+                        return _CategoryFolderTile(
+                          category: category,
+                          currentFolder: override ?? category.folderName,
+                          onPick: (path) {
+                            final currentOverrides = Map<String, String>.from(
+                              settings.categoryFolderOverrides ?? {},
+                            );
+                            currentOverrides[category.name] = path;
+                            ref
+                                .read(appSettingsProvider.notifier)
+                                .save(
+                                  (s) => s.copyWith(
+                                    categoryFolderOverrides: currentOverrides,
+                                  ),
+                                );
+                          },
+                          onReset: () {
+                            final currentOverrides = Map<String, String>.from(
+                              settings.categoryFolderOverrides ?? {},
+                            );
+                            currentOverrides.remove(category.name);
+                            ref
+                                .read(appSettingsProvider.notifier)
+                                .save(
+                                  (s) => s.copyWith(
+                                    categoryFolderOverrides: currentOverrides,
+                                  ),
+                                );
+                          },
+                        );
+                      }),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -696,6 +753,107 @@ class _ProvisionableTile extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(installHint!, style: AppTextStyles.caption),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Category Folder Tile ─────────────────────────────────────────────────────────
+
+class _CategoryFolderTile extends ConsumerWidget {
+  final FileCategory category;
+  final String currentFolder;
+  final void Function(String) onPick;
+  final VoidCallback onReset;
+
+  const _CategoryFolderTile({
+    required this.category,
+    required this.currentFolder,
+    required this.onPick,
+    required this.onReset,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final (label, color) = switch (category) {
+      FileCategory.videos => ('Videos', AppColors.primary),
+      FileCategory.music => ('Music', Colors.purple),
+      FileCategory.documents => ('Documents', Colors.blue),
+      FileCategory.compressed => ('Compressed', Colors.orange),
+      FileCategory.programs => ('Programs', Colors.green),
+      FileCategory.images => ('Images', Colors.pink),
+      FileCategory.other => ('Other', AppColors.textLow),
+    };
+
+    final hasOverride = currentFolder != category.folderName;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(label, style: AppTextStyles.bodyMedium)),
+              if (hasOverride)
+                const Tooltip(
+                  message: 'Custom folder override active',
+                  child: Icon(
+                    Icons.edit_outlined,
+                    size: 14,
+                    color: AppColors.primary,
+                  ),
+                ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () async {
+                  final path = await getDirectoryPath(
+                    confirmButtonText: 'Select',
+                  );
+                  if (path != null) onPick(path);
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text('Change', style: AppTextStyles.labelSmall),
+              ),
+              const SizedBox(width: 8),
+              if (hasOverride)
+                TextButton(
+                  onPressed: onReset,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text('Reset', style: AppTextStyles.labelSmall),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            currentFolder,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textMedium,
+              fontFamily: 'monospace',
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );

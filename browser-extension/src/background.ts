@@ -20,6 +20,8 @@ import {
   PROTOCOL_VERSION,
   ANALYSIS_TIMEOUT_MS,
   MAX_CANDIDATES,
+  CONNECT_RETRY_DELAY_MS,
+  MAX_CONNECT_RETRIES,
 } from "./types";
 import type {
   BgToPopupMsg,
@@ -29,10 +31,11 @@ import type {
   IncomingMessage,
   MediaCandidate,
   MediaFormat,
+  OrdinaryFileDownloadMessage,
   PopupToBgMsg,
 } from "./types";
 
-// ── State ────────────────────────────────────────────────────────────────────
+// ── State ────────────────────────────────────────────────────────────────
 
 let nativePort: chrome.runtime.Port | null = null;
 let connectionState: ConnectionState = "disconnected";
@@ -48,10 +51,219 @@ interface PendingRequest {
 }
 const pendingRequests = new Map<string, PendingRequest>();
 
+// In-flight ordinary file downloads: downloadId → requestId (for cancellation after acceptance)
+const inFlightDownloads = new Map<number, string>();
+
+// Interception config (synced from storage)
+let interceptionEnabled = true;
+const INTERCEPTED_EXTENSIONS = new Set([
+  "zip", "rar", "7z", "tar", "gz", "bz2", "xz",
+  "exe", "msi", "dmg", "pkg", "apk", "appimage",
+  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
+  "mp4", "mkv", "avi", "mov", "webm", "flv", "wmv",
+  "mp3", "wav", "flac", "aac", "ogg", "m4a",
+  "jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "svg",
+  "iso", "img", "vhd", "vmdk",
+  "torrent", "magnet"
+]);
+const EXCLUDED_DOMAINS = new Set([
+  "accounts.google.com",
+  "login.microsoftonline.com",
+  "github.com",
+  "gitlab.com"
+]);
+const BROWSER_INTERNAL_SCHEMES = new Set([
+  "chrome:", "chrome-extension:", "edge:", "brave:", "vivaldi:",
+  "firefox:", "about:", "chrome-devtools:", "view-source:"
+]);
+
 let _reqCounter = 0;
 function _newRequestId(): string {
   return `cf-${Date.now()}-${++_reqCounter}`;
 }
+
+// ── Interception logic ─────────────────────────────────────────────────────────
+
+/** Check if a URL should be intercepted (not browser-internal, not excluded domain, valid extension). */
+function shouldInterceptDownload(item: chrome.downloads.DownloadItem): boolean {
+  if (!interceptionEnabled) return false;
+  if (!item.url || item.url.startsWith("blob:")) return false;
+
+  try {
+    const url = new URL(item.url);
+    // Skip browser-internal schemes
+    if (BROWSER_INTERNAL_SCHEMES.has(url.protocol)) return false;
+    // Skip excluded domains
+    if (EXCLUDED_DOMAINS.has(url.hostname)) return false;
+    // Skip if already handled by CreatorForge (we track by downloadId)
+    if (inFlightDownloads.has(item.id!)) return false;
+    // Check file extension
+    const ext = url.pathname.split(".").pop()?.toLowerCase() ?? "";
+    if (!INTERCEPTED_EXTENSIONS.has(ext)) return false;
+    // Skip very small files (< 1 KB)
+    if (item.totalBytes !== undefined && item.totalBytes > 0 && item.totalBytes < 1024) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Extract filename from download item or URL. */
+function getFilename(item: chrome.downloads.DownloadItem): string {
+  if (item.filename) return item.filename;
+  try {
+    const url = new URL(item.url);
+    const pathname = url.pathname;
+    const name = pathname.split("/").pop() || "download";
+    return name;
+  } catch {
+    return "download";
+  }
+}
+
+/** Send ordinary file download request to native host. */
+async function sendOrdinaryFileDownload(item: chrome.downloads.DownloadItem): Promise<boolean> {
+  const requestId = _newRequestId();
+  const filename = getFilename(item);
+
+  const message: OrdinaryFileDownloadMessage = {
+    version: PROTOCOL_VERSION,
+    type: "ORDINARY_FILE_DOWNLOAD",
+    requestId,
+    url: item.url,
+    filename,
+    mimeType: item.mime,
+    fileSize: item.totalBytes,
+    referrer: item.referrer,
+    pageUrl: item.url, // For ordinary files, the URL is the page URL too
+    pageTitle: filename,
+  };
+
+  try {
+    const response = await sendNative(message);
+    if (response.type === "DOWNLOAD_ACCEPTED") {
+      // Track this download for cancellation
+      inFlightDownloads.set(item.id!, requestId);
+      // Cancel the browser's download now that CreatorForge has accepted it
+      chrome.downloads.cancel(item.id!);
+      // Erase from browser's download history (optional, keeps UI clean)
+      chrome.downloads.erase({ id: item.id! });
+      return true;
+    } else if (response.type === "DOWNLOAD_REJECTED") {
+      // Let browser continue the download
+      return false;
+    }
+  } catch (err) {
+    console.error("[CreatorForge] Ordinary file download request failed:", err);
+  }
+  return false;
+}
+
+/** Handle chrome.downloads.onCreated - intercept ordinary file downloads. */
+chrome.downloads.onCreated.addListener(async (item: chrome.downloads.DownloadItem) => {
+  // Skip if already complete or interrupted
+  if (item.state === "complete" || item.state === "interrupted") return;
+
+  if (shouldInterceptDownload(item)) {
+    await sendOrdinaryFileDownload(item);
+  }
+});
+
+/** Handle chrome.downloads.onChanged - clean up tracking when download finishes. */
+chrome.downloads.onChanged.addListener((delta: chrome.downloads.DownloadDelta) => {
+  if (delta.id && inFlightDownloads.has(delta.id)) {
+    if (delta.state && (delta.state.current === "complete" || delta.state.current === "interrupted")) {
+      inFlightDownloads.delete(delta.id);
+    }
+  }
+});
+
+/** Load interception settings from storage on startup. */
+async function loadInterceptionSettings(): Promise<void> {
+  try {
+    const result = await chrome.storage.sync.get(["interceptionEnabled"]);
+    if (result.interceptionEnabled !== undefined) {
+      interceptionEnabled = result.interceptionEnabled;
+    }
+  } catch {
+    // Default to enabled
+    interceptionEnabled = true;
+  }
+}
+
+/** Create context menu for "Download with CreatorForge". */
+function createContextMenu(): void {
+  chrome.contextMenus.create({
+    id: "creatorforge-download-link",
+    title: "Download with CreatorForge",
+    contexts: ["link"],
+    targetUrlPatterns: ["http://*/*", "https://*/*"],
+    documentUrlPatterns: ["http://*/*", "https://*/*"],
+  });
+
+  chrome.contextMenus.create({
+    id: "creatorforge-download-image",
+    title: "Download image with CreatorForge",
+    contexts: ["image"],
+    targetUrlPatterns: ["http://*/*", "https://*/*"],
+    documentUrlPatterns: ["http://*/*", "https://*/*"],
+  });
+
+  chrome.contextMenus.create({
+    id: "creatorforge-download-media",
+    title: "Download video/audio with CreatorForge",
+    contexts: ["video", "audio"],
+    targetUrlPatterns: ["http://*/*", "https://*/*"],
+    documentUrlPatterns: ["http://*/*", "https://*/*"],
+  });
+}
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (!tab?.id) return;
+
+  let url = info.linkUrl || info.srcUrl || info.mediaUrl;
+  if (!url) return;
+
+  // For context menu, we need to create a synthetic download item
+  // We'll send the URL directly as an ordinary file download
+  const requestId = _newRequestId();
+  const filename = url.split("/").pop()?.split("?")[0] || "download";
+
+  const message: OrdinaryFileDownloadMessage = {
+    version: PROTOCOL_VERSION,
+    type: "ORDINARY_FILE_DOWNLOAD",
+    requestId,
+    url,
+    filename,
+    pageUrl: tab.url || url,
+    pageTitle: tab.title || filename,
+  };
+
+  try {
+    const response = await sendNative(message);
+    if (response.type === "DOWNLOAD_ACCEPTED") {
+      // Show notification to user
+      chrome.notifications.create({
+        type: "basic",
+        iconUrl: "icons/icon48.png",
+        title: "CreatorForge",
+        message: `Download started: ${filename}`,
+      });
+    }
+  } catch (err) {
+    console.error("[CreatorForge] Context menu download failed:", err);
+  }
+});
+
+// Initialize context menu on install/update
+chrome.runtime.onInstalled.addListener(async () => {
+  await loadInterceptionSettings();
+  createContextMenu();
+});
+
+// Load settings on startup
+loadInterceptionSettings();
+createContextMenu();
 
 // ── Native Messaging port management ─────────────────────────────────────────
 
