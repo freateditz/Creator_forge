@@ -25,10 +25,11 @@ class DestinationResolver {
 
     // If auto-organize is enabled, append the category folder
     if (settings.autoOrganizeEnabled) {
-      final categoryFolder =
-          customCategoryFolder ??
-          _getCategoryFolderOverride(category, settings) ??
-          category.folderName;
+      final categoryFolder = _resolveCategoryFolder(
+        customCategoryFolder: customCategoryFolder,
+        category: category,
+        settings: settings,
+      );
 
       baseDir = _joinPath(baseDir, categoryFolder);
     }
@@ -116,10 +117,38 @@ class DestinationResolver {
     return overrides[category.name];
   }
 
+  /// Resolve the category folder to use, honoring precedence and treating
+  /// empty/blank overrides as "fall back to the default".
+  String _resolveCategoryFolder({
+    required String? customCategoryFolder,
+    required FileCategory category,
+    required AppSettings settings,
+  }) {
+    // Explicit customCategoryFolder takes precedence.
+    if (customCategoryFolder != null && customCategoryFolder.isNotEmpty) {
+      return customCategoryFolder;
+    }
+    // Otherwise use the per-category override, if set and non-empty.
+    final override = _getCategoryFolderOverride(category, settings);
+    if (override != null && override.isNotEmpty) {
+      return override;
+    }
+    // Fall back to the category's default folder name.
+    return category.folderName;
+  }
+
   /// Join path segments in a platform-aware way.
+  ///
+  /// If [segment] is an absolute path (Windows drive letter or Unix root),
+  /// it is returned directly without joining to [base].
   String _joinPath(String base, String segment) {
     if (base.isEmpty) return segment;
     if (segment.isEmpty) return base;
+
+    // If segment is already an absolute path, use it directly
+    if (_isAbsolutePath(segment)) {
+      return segment;
+    }
 
     // Normalize separators
     final normalizedBase = base.replaceAll('/', Platform.pathSeparator);
@@ -129,6 +158,17 @@ class DestinationResolver {
       return '$normalizedBase$normalizedSegment';
     }
     return '$normalizedBase${Platform.pathSeparator}$normalizedSegment';
+  }
+
+  /// Check if a path is absolute (Windows drive letter or Unix root).
+  bool _isAbsolutePath(String path) {
+    if (path.isEmpty) return false;
+    // Windows: C:\..., D:/..., \\server\share (UNC)
+    if (RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path)) return true;
+    if (path.startsWith('\\\\') || path.startsWith('//')) return true;
+    // Unix/macOS: /...
+    if (path.startsWith('/')) return true;
+    return false;
   }
 
   /// Add a duplicate suffix to a filename: "file (1).ext"
