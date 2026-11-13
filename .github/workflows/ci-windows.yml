@@ -50,8 +50,24 @@ jobs:
       - name: Static analysis
         run: flutter analyze
 
-      - name: Unit tests
+      - name: Print Flutter/Dart versions
+        run: |
+          flutter --version
+          dart --version
+
+      - name: Unit tests (all)
         run: flutter test
+
+      # ── Diagnostic: Run failing tests individually with expanded output ─────────
+      - name: Test - Range GET probe fallback (expanded)
+        run: |
+          flutter test --reporter expanded test/services/persistent_resume_test.dart --plain-name "Range GET probe fallback when HEAD is unsupported"
+        continue-on-error: true
+
+      - name: Test - HTTP 206 range support (expanded)
+        run: |
+          flutter test --reporter expanded test/services/segmented_http_engine_test.dart --plain-name "Downloads file successfully with range support (HTTP 206)"
+        continue-on-error: true
 
       # ── Flutter Windows release build ─────────────────────────────────────────
       - name: Windows release build
