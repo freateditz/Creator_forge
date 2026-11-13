@@ -119,10 +119,16 @@ void main() {
         (i) => i % 256,
       ); // 2 MB test file
 
+      // DIAGNOSTIC: Track server lifecycle
+      final serverStart = DateTime.now();
       mockServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      print('[DIAG] HTTP/206 test: Server bound at ${mockServer.address.host}:${mockServer.port} (took ${DateTime.now().difference(serverStart).inMilliseconds}ms)');
+
       mockServer.listen((HttpRequest request) async {
         final path = request.uri.path;
+        print('[DIAG] HTTP/206 test: Received ${request.method} ${request.uri.path}');
         if (path == '/head') {
+          print('[DIAG] HTTP/206 test: Responding to HEAD with 200 OK');
           request.response.headers.set('accept-ranges', 'bytes');
           request.response.contentLength = fileData.length;
           request.response.statusCode = HttpStatus.ok;
@@ -138,6 +144,7 @@ void main() {
             final end = int.parse(match.group(2)!);
             final chunk = fileData.sublist(start, end + 1);
 
+            print('[DIAG] HTTP/206 test: Responding to Range bytes=$start-$end with 206 Partial Content');
             request.response.statusCode = HttpStatus.partialContent;
             request.response.headers.set(
               'content-range',
@@ -151,6 +158,7 @@ void main() {
           }
         }
 
+        print('[DIAG] HTTP/206 test: Fallback to full 200 OK');
         request.response.statusCode = HttpStatus.ok;
         request.response.contentLength = fileData.length;
         request.response.add(fileData);
@@ -177,7 +185,9 @@ void main() {
         }
       }
 
+      print('[DIAG] HTTP/206 test: Closing mock server');
       await mockServer.close();
+      print('[DIAG] HTTP/206 test: Server closed');
 
       expect(completedTask, isNotNull);
       expect(completedTask!.status, DownloadStatus.completed);
@@ -186,6 +196,7 @@ void main() {
       final finalFile = File(
         p.join(completedTask.outputDirectory, completedTask.outputFilename!),
       );
+      print('[DIAG] HTTP/206 test: Final file exists=${finalFile.existsSync()}, size=${finalFile.existsSync() ? finalFile.lengthSync() : -1}');
       expect(finalFile.existsSync(), isTrue);
       expect(finalFile.lengthSync(), fileData.length);
     });
@@ -193,13 +204,19 @@ void main() {
     test('Falls back to single stream if server returns HTTP 200 instead of 206 on Range request', () async {
       final fileData = List.generate(1024 * 1024, (i) => i % 256); // 1 MB
 
+      // DIAGNOSTIC: Track server lifecycle
+      final serverStart = DateTime.now();
       mockServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      print('[DIAG] HTTP/200-fallback test: Server bound at ${mockServer.address.host}:${mockServer.port} (took ${DateTime.now().difference(serverStart).inMilliseconds}ms)');
       mockServer.listen((HttpRequest request) async {
+        print('[DIAG] HTTP/200-fallback test: Received ${request.method} ${request.uri.path}');
+        print('[DIAG] HTTP/200-fallback test: Range header: ${request.headers.value('range')}');
         request.response.statusCode = HttpStatus.ok;
         request.response.contentLength = fileData.length;
         request.response.headers.set('accept-ranges', 'bytes');
         request.response.add(fileData);
         await request.response.close();
+        print('[DIAG] HTTP/200-fallback test: Responded with 200 OK');
       });
 
       final url =
@@ -220,7 +237,9 @@ void main() {
         }
       }
 
+      print('[DIAG] HTTP/200-fallback test: Closing mock server');
       await mockServer.close();
+      print('[DIAG] HTTP/200-fallback test: Server closed');
 
       expect(completedTask?.status, DownloadStatus.completed);
       expect(completedTask?.outputFilename, isNotNull);
@@ -228,6 +247,7 @@ void main() {
       final finalFile = File(
         p.join(completedTask!.outputDirectory, completedTask.outputFilename!),
       );
+      print('[DIAG] HTTP/200-fallback test: Final file exists=${finalFile.existsSync()}, size=${finalFile.existsSync() ? finalFile.lengthSync() : -1}');
       expect(finalFile.existsSync(), isTrue);
       expect(finalFile.lengthSync(), fileData.length);
     });

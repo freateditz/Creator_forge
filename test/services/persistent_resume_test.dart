@@ -85,15 +85,21 @@ void main() {
     test('Range GET probe fallback when HEAD is unsupported', () async {
       final fileData = List.generate(1024 * 1024, (i) => i % 256); // 1 MB
 
+      // DIAGNOSTIC: Track server lifecycle
+      final serverStart = DateTime.now();
       mockServer = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      print('[DIAG] HEAD-fallback test: Server bound at ${mockServer.address.host}:${mockServer.port} (took ${DateTime.now().difference(serverStart).inMilliseconds}ms)');
       mockServer.listen((HttpRequest request) async {
+        print('[DIAG] HEAD-fallback test: Received ${request.method} ${request.uri.path}');
         if (request.method == 'HEAD') {
+          print('[DIAG] HEAD-fallback test: Responding to HEAD with 405 Method Not Allowed');
           request.response.statusCode = HttpStatus.methodNotAllowed;
           await request.response.close();
           return;
         }
 
         final range = request.headers.value('range');
+        print('[DIAG] HEAD-fallback test: Range header: $range');
         if (range != null) {
           final match = RegExp(r'bytes=(\d+)-(\d+)').firstMatch(range);
           if (match != null) {
@@ -101,6 +107,7 @@ void main() {
             final end = int.parse(match.group(2)!);
             final chunk = fileData.sublist(start, end + 1);
 
+            print('[DIAG] HEAD-fallback test: Responding to Range bytes=$start-$end with 206 Partial Content');
             request.response.statusCode = HttpStatus.partialContent;
             request.response.headers.set(
               'content-range',
@@ -114,6 +121,7 @@ void main() {
           }
         }
 
+        print('[DIAG] HEAD-fallback test: Fallback to full 200 OK');
         request.response.statusCode = HttpStatus.ok;
         request.response.contentLength = fileData.length;
         request.response.add(fileData);
@@ -139,13 +147,16 @@ void main() {
         }
       }
 
+      print('[DIAG] HEAD-fallback test: Closing mock server');
       await mockServer.close();
+      print('[DIAG] HEAD-fallback test: Server closed');
 
       expect(completedTask, isNotNull);
       expect(completedTask!.status, DownloadStatus.completed);
       final finalFile = File(
         p.join(completedTask.outputDirectory, completedTask.outputFilename!),
       );
+      print('[DIAG] HEAD-fallback test: Final file exists=${finalFile.existsSync()}, size=${finalFile.existsSync() ? finalFile.lengthSync() : -1}');
       expect(finalFile.existsSync(), isTrue);
       expect(finalFile.lengthSync(), fileData.length);
     });
