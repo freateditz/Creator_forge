@@ -251,7 +251,7 @@ class DownloadHistoryRepository {
       )..where((t) => t.taskId.equals(taskId))).write(
         DownloadHistoryTableCompanion(
           mergingStartedAt: Value(DateTime.now()),
-          status: Value('merging'),
+          status: const Value('merging'),
           lastUpdatedAt: Value(DateTime.now()),
         ),
       );

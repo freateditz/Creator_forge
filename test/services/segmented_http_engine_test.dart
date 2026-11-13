@@ -23,7 +23,7 @@ void main() {
 
     setUpAll(() async {
       registerFallbackValue(
-        DownloadHistoryTableCompanion(taskId: const drift.Value('fallback-id')),
+        const DownloadHistoryTableCompanion(taskId: drift.Value('fallback-id')),
       );
       registerFallbackValue(
         DownloadTask(
