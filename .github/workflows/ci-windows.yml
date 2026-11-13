@@ -63,11 +63,13 @@ jobs:
         run: |
           flutter test --reporter expanded test/services/persistent_resume_test.dart --plain-name "Range GET probe fallback when HEAD is unsupported"
         continue-on-error: true
+        if: always()
 
       - name: Test - HTTP 206 range support (expanded)
         run: |
           flutter test --reporter expanded test/services/segmented_http_engine_test.dart --plain-name "Downloads file successfully with range support (HTTP 206)"
         continue-on-error: true
+        if: always()
 
       # ── Flutter Windows release build ─────────────────────────────────────────
       - name: Windows release build
