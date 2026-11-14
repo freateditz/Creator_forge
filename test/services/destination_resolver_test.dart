@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -39,9 +40,7 @@ void main() {
         defaultDownloadsDir: baseDir,
         tempDir: tempDir.path,
         autoOrganizeEnabled: true,
-        categoryFolderOverrides: {
-          'videos': absoluteOverride,
-        },
+        categoryFolderOverrides: {'videos': absoluteOverride},
       );
 
       final outputDir = await resolver.resolveOutputDirectory(
@@ -55,27 +54,28 @@ void main() {
       expect(outputDir.path, isNot(equals(p.join(baseDir, absoluteOverride))));
     });
 
-    test('2. Relative category folder override is joined to base directory', () async {
-      final baseDir = tempOutputDir.path;
-      final relativeOverride = 'MyCustomVideos';
+    test(
+      '2. Relative category folder override is joined to base directory',
+      () async {
+        final baseDir = tempOutputDir.path;
+        final relativeOverride = 'MyCustomVideos';
 
-      final settings = AppSettings(
-        defaultDownloadsDir: baseDir,
-        tempDir: tempDir.path,
-        autoOrganizeEnabled: true,
-        categoryFolderOverrides: {
-          'videos': relativeOverride,
-        },
-      );
+        final settings = AppSettings(
+          defaultDownloadsDir: baseDir,
+          tempDir: tempDir.path,
+          autoOrganizeEnabled: true,
+          categoryFolderOverrides: {'videos': relativeOverride},
+        );
 
-      final outputDir = await resolver.resolveOutputDirectory(
-        category: FileCategory.videos,
-        settings: settings,
-        customCategoryFolder: null,
-      );
+        final outputDir = await resolver.resolveOutputDirectory(
+          category: FileCategory.videos,
+          settings: settings,
+          customCategoryFolder: null,
+        );
 
-      expect(outputDir.path, equals(p.join(baseDir, relativeOverride)));
-    });
+        expect(outputDir.path, equals(p.join(baseDir, relativeOverride)));
+      },
+    );
 
     test('3. Default category folder is joined to base directory', () async {
       final baseDir = tempOutputDir.path;
@@ -103,9 +103,7 @@ void main() {
         defaultDownloadsDir: baseDir,
         tempDir: tempDir.path,
         autoOrganizeEnabled: true,
-        categoryFolderOverrides: {
-          'videos': '',
-        },
+        categoryFolderOverrides: {'videos': ''},
       );
 
       final outputDir = await resolver.resolveOutputDirectory(
@@ -126,9 +124,7 @@ void main() {
         defaultDownloadsDir: baseDir,
         tempDir: tempDir.path,
         autoOrganizeEnabled: true,
-        categoryFolderOverrides: {
-          'videos': absoluteOverride,
-        },
+        categoryFolderOverrides: {'videos': absoluteOverride},
       );
 
       final outputDir = await resolver.resolveOutputDirectory(
@@ -150,9 +146,7 @@ void main() {
         defaultDownloadsDir: baseDir,
         tempDir: tempDir.path,
         autoOrganizeEnabled: true,
-        categoryFolderOverrides: {
-          'videos': uncOverride,
-        },
+        categoryFolderOverrides: {'videos': uncOverride},
       );
 
       final outputDir = await resolver.resolveOutputDirectory(
@@ -166,50 +160,57 @@ void main() {
       expect(outputDir.path, isNot(equals(p.join(baseDir, uncOverride))));
     });
 
-    test('7. Custom base directory with auto-organize disabled uses base directly', () async {
-      final customBaseDir = p.join(tempOutputDir.path, 'CustomBase');
+    test(
+      '7. Custom base directory with auto-organize disabled uses base directly',
+      () async {
+        final customBaseDir = p.join(tempOutputDir.path, 'CustomBase');
 
-      final settings = AppSettings(
-        defaultDownloadsDir: customBaseDir,
-        tempDir: tempDir.path,
-        autoOrganizeEnabled: false, // Disabled
-        categoryFolderOverrides: {
-          'videos': 'ShouldNotBeUsed',
-        },
-      );
+        final settings = AppSettings(
+          defaultDownloadsDir: customBaseDir,
+          tempDir: tempDir.path,
+          autoOrganizeEnabled: false, // Disabled
+          categoryFolderOverrides: {'videos': 'ShouldNotBeUsed'},
+        );
 
-      final outputDir = await resolver.resolveOutputDirectory(
-        category: FileCategory.videos,
-        settings: settings,
-        customCategoryFolder: null,
-      );
+        final outputDir = await resolver.resolveOutputDirectory(
+          category: FileCategory.videos,
+          settings: settings,
+          customCategoryFolder: null,
+        );
 
-      // With auto-organize disabled, base directory should be used directly
-      expect(outputDir.path, equals(customBaseDir));
-    });
+        // With auto-organize disabled, base directory should be used directly
+        expect(outputDir.path, equals(customBaseDir));
+      },
+    );
 
-    test('8. Explicit customCategoryFolder absolute path is used directly', () async {
-      final baseDir = tempOutputDir.path;
-      final explicitAbsolute = r'C:\Explicit\Downloads\Audio';
+    test(
+      '8. Explicit customCategoryFolder absolute path is used directly',
+      () async {
+        final baseDir = tempOutputDir.path;
+        final explicitAbsolute = r'C:\Explicit\Downloads\Audio';
 
-      final settings = AppSettings(
-        defaultDownloadsDir: baseDir,
-        tempDir: tempDir.path,
-        autoOrganizeEnabled: true,
-        categoryFolderOverrides: null,
-      );
+        final settings = AppSettings(
+          defaultDownloadsDir: baseDir,
+          tempDir: tempDir.path,
+          autoOrganizeEnabled: true,
+          categoryFolderOverrides: null,
+        );
 
-      // This simulates what SegmentedHttpEngine does when outputDirectory != defaultOutputDir
-      final result = await resolver.resolve(
-        suggestedFilename: 'test.mp3',
-        category: FileCategory.music,
-        settings: settings,
-        customCategoryFolder: explicitAbsolute,
-      );
+        // This simulates what SegmentedHttpEngine does when outputDirectory != defaultOutputDir
+        final result = await resolver.resolve(
+          suggestedFilename: 'test.mp3',
+          category: FileCategory.music,
+          settings: settings,
+          customCategoryFolder: explicitAbsolute,
+        );
 
-      expect(result.$1.path, equals(explicitAbsolute));
-      expect(result.$1.path, isNot(equals(p.join(baseDir, explicitAbsolute))));
-    });
+        expect(result.$1.path, equals(explicitAbsolute));
+        expect(
+          result.$1.path,
+          isNot(equals(p.join(baseDir, explicitAbsolute))),
+        );
+      },
+    );
 
     test('9. No duplicated base directory in resolved paths', () async {
       final baseDir = tempOutputDir.path;
@@ -219,9 +220,7 @@ void main() {
         defaultDownloadsDir: baseDir,
         tempDir: tempDir.path,
         autoOrganizeEnabled: true,
-        categoryFolderOverrides: {
-          'documents': relativeFolder,
-        },
+        categoryFolderOverrides: {'documents': relativeFolder},
       );
 
       final result = await resolver.resolve(
@@ -235,51 +234,58 @@ void main() {
       final expectedPath = p.join(baseDir, relativeFolder, 'test.pdf');
       expect(result.$3, equals(expectedPath));
       // Verify baseDir doesn't appear twice
-      expect(result.$3.split(baseDir).length, equals(2)); // split produces n+1 parts
+      expect(
+        result.$3.split(baseDir).length,
+        equals(2),
+      ); // split produces n+1 parts
     });
 
-    test('10. Windows drive-letter path with forward slashes handled correctly', () async {
-      final baseDir = tempOutputDir.path;
-      final windowsPath = 'E:/Downloads/Music';
+    test(
+      '10. Windows drive-letter path with forward slashes handled correctly',
+      () async {
+        final baseDir = tempOutputDir.path;
+        final windowsPath = 'E:/Downloads/Music';
 
-      final settings = AppSettings(
-        defaultDownloadsDir: baseDir,
-        tempDir: tempDir.path,
-        autoOrganizeEnabled: true,
-        categoryFolderOverrides: {
-          'music': windowsPath,
-        },
-      );
+        final settings = AppSettings(
+          defaultDownloadsDir: baseDir,
+          tempDir: tempDir.path,
+          autoOrganizeEnabled: true,
+          categoryFolderOverrides: {'music': windowsPath},
+        );
 
-      final outputDir = await resolver.resolveOutputDirectory(
-        category: FileCategory.music,
-        settings: settings,
-        customCategoryFolder: null,
-      );
+        final outputDir = await resolver.resolveOutputDirectory(
+          category: FileCategory.music,
+          settings: settings,
+          customCategoryFolder: null,
+        );
 
-      expect(outputDir.path, equals(windowsPath));
-    });
+        expect(outputDir.path, equals(windowsPath));
+      },
+    );
 
-    test('11. Explicit relative customCategoryFolder is joined to base', () async {
-      final baseDir = tempOutputDir.path;
-      final explicitRelative = 'ExplicitRelative';
+    test(
+      '11. Explicit relative customCategoryFolder is joined to base',
+      () async {
+        final baseDir = tempOutputDir.path;
+        final explicitRelative = 'ExplicitRelative';
 
-      final settings = AppSettings(
-        defaultDownloadsDir: baseDir,
-        tempDir: tempDir.path,
-        autoOrganizeEnabled: true,
-        categoryFolderOverrides: null,
-      );
+        final settings = AppSettings(
+          defaultDownloadsDir: baseDir,
+          tempDir: tempDir.path,
+          autoOrganizeEnabled: true,
+          categoryFolderOverrides: null,
+        );
 
-      final result = await resolver.resolve(
-        suggestedFilename: 'test.mp4',
-        category: FileCategory.videos,
-        settings: settings,
-        customCategoryFolder: explicitRelative,
-      );
+        final result = await resolver.resolve(
+          suggestedFilename: 'test.mp4',
+          category: FileCategory.videos,
+          settings: settings,
+          customCategoryFolder: explicitRelative,
+        );
 
-      expect(result.$1.path, equals(p.join(baseDir, explicitRelative)));
-    });
+        expect(result.$1.path, equals(p.join(baseDir, explicitRelative)));
+      },
+    );
 
     test('12. Mixed category and explicit customCategoryFolder', () async {
       final baseDir = tempOutputDir.path;
@@ -289,9 +295,7 @@ void main() {
         defaultDownloadsDir: baseDir,
         tempDir: tempDir.path,
         autoOrganizeEnabled: true,
-        categoryFolderOverrides: {
-          'videos': 'ShouldNotBeUsed',
-        },
+        categoryFolderOverrides: {'videos': 'ShouldNotBeUsed'},
       );
 
       // Explicit customCategoryFolder should take precedence over category override
